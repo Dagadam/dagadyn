@@ -1,65 +1,106 @@
 # DagaDyn
 
-Estensione per SketchUp che rende dinamici gli oggetti. Ogni proprietà di un gruppo, di un componente o di un
-piano di sezione (spostamento, posizione, rotazione, dimensioni, scala, colore, opacità, visibilità, tag) passa
-da uno stato all'altro in un tempo dato, lungo una curva disegnabile, e l'animazione si vede nella scena
-fotogramma per fotogramma. Ogni oggetto parte con la timeline, dopo un altro oggetto o quando lo si aziona.
-Con DagaWASD gli oggetti si muovono anche camminando, esplorando, nei percorsi e nei video.
+**English** · [Italiano](README.it.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Português](README.pt.md) · [Nederlands](README.nl.md) · [Svenska](README.sv.md) · [Polski](README.pl.md) · [Čeština](README.cs.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文](README.zh.md)
 
-## Struttura
+A SketchUp extension that makes objects dynamic. Any property of a group, a
+component or a section plane goes from one state to another over the time
+you choose, along a curve you draw, and you watch it happen in the scene.
+Doors that open, lifts that rise, lamps that light up, sections that sweep
+through a building.
 
-```
-dagadyn.rb              loader (VERSION, register_extension): va nella cartella Plugins
-dagadyn/main.rb         carica lib/ nell'ordine giusto
-dagadyn/lib/
-  config.rb             costanti, DEFAULT, proprietà animabili (PROPS)
-  i18n.rb  settings.rb  win32.rb      come in DagaWASD (lingue, settings.json, registro, appunti)
-  curves.rb             curve PCHIP con punti ad angolo, preset   ← stessa copia in panel.html
-  color.rb              colori, miscela in OKLab
-  tracks.rb             dati negli attributi dell'istanza (dizionario "DagaDyn", chiave "data")
-  props.rb              valori di riposo, trasformazione animata, materiali temporanei
-  player.rb             motore: sessione, tempo, partenze (catene, azionati), advance(now), view.animation
-  api.rb                collegamento con DagaWASD: ext_begin/ext_tick/ext_end, carry, kinematic?, use
-  paths.rb              traiettorie nella vista (Overlay) e strumento Aziona
-  observers.rb          modello aperto, salvataggio, annulla, selezione
-  panel.rb  ui.rb       pannello (HtmlDialog), menu e barra
-dagadyn/panel.html      pannello: telaio di DagaWASD + timeline, tracce, editor delle curve
-dagadyn/lang/           36 lingue (index.json come DagaWASD)
-tools/test_curves.rb    le curve di Ruby e del pannello devono coincidere (serve node)
-tools/test_engine.rb    valori delle tracce nel tempo, partenze, azionati, senza SketchUp
-tools/test_link.rb      il motore in una SketchUp finta (tools/fake_sketchup.rb) e l'aggancio a DagaWASD
-tools/crea_rbz.rb       pacchetto dist/dagadyn-<versione>.rbz (vuole la sezione nel CHANGELOG)
-```
+⬇ **Download**: [latest release](https://github.com/Dagadam/dagadyn/releases/latest) (all versions: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
-## Sviluppo
+## What it does
 
-`Plugins/dagadyn_dev.rb` carica l'estensione direttamente da `I:\DYNAMO`. Le modifiche si vedono
-riavviando SketchUp, o con `load 'I:/DYNAMO/dagadyn/lib/<file>.rb'` dalla console Ruby
-(panel.html si ricarica chiudendo e riaprendo il pannello).
+- **Properties**: move (from where the object is), position, rotation, size
+  (width, depth, height), scale, colour, opacity, visibility and tag. Section
+  planes move and switch on and off.
+- **States and curves**: every property has a start state, an end state and
+  a duration; add more states to make a sequence. Each transition follows a
+  curve: linear, speed up, slow down, overshoot, bounce, elastic, steps, or
+  one you draw in the curve editor by dragging its dots.
+- **Timeline**: Play, Pause, Stop and a bar to look at any moment. Once,
+  in a loop or back and forth, at the speed you like.
+- **Starts**: an object starts with the timeline, after another object has
+  finished (plus a wait), or **when it is used**: click it with the *Use*
+  tool. It can start over every time, or go forward and then back the next
+  time (doors, drawers).
+- **The project does not change**: animations move the objects without
+  touching the model. *Stop* puts everything back, and the file always
+  saves the rest state; *Keep* leaves the objects as they are now (Ctrl+Z
+  undoes it).
+- **Inside the objects**: animations are saved in the `.skp` file and copied
+  with the object. With several objects selected, a change applies to all of
+  them, adapted to each one's position and size.
+- **Paths in the view**: the route of the objects that move, with a dot for
+  every state (SketchUp 2023 and later).
+- **Preview while editing**: changing the value of a state shows the object
+  in that state.
+- **With [DagaWASD](https://github.com/Dagadam/dagawasd)** objects also move
+  while you walk, explore, replay paths and export videos (frame by frame,
+  at the video's time). Moving platforms carry you along, and the Use key
+  starts the objects that start when used.
+- Panel in 36 languages, with the same settings, themes and appearance as
+  DagaWASD.
+- **Accessibility**: see [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
-```
-ruby tools/test_curves.rb
-ruby tools/test_engine.rb
-ruby tools/test_link.rb
-ruby tools/crea_rbz.rb
-```
+Requirements: SketchUp 2023 or later. Developed and tested on Windows; on a
+Mac it has not been tested yet.
 
-## DagaWASD
+## How to use it
 
-Il collegamento sta in DagaWASD, `lib/dyn_link.rb`, e chiama solo i metodi pubblici di `DagaDyn`
-(`lib/api.rb`). Nessuna delle due estensioni ha bisogno dell'altra. DagaWASD batte il tempo: camminata e
-esploratore in tempo reale, video al tempo del video (fotogramma k → k / fps). Mentre DagaWASD guida, il Play
-di DagaDyn aspetta.
+1. *Extensions › DagaDyn › Animation panel…* (or the toolbar).
+2. Select a group, a component or a section plane. In *Animation › Object*
+   pick a property to animate and press *Add*.
+3. Write the start state and the end state (*⌖ current* takes the value the
+   object has now), the duration, and pick a curve. Click the small curve to
+   draw your own.
+4. Press **▶** (or Space in the panel). **⏹** puts everything back.
 
-## Regole del motore
+For objects that start «when used», pick the *Use* tool (toolbar or menu)
+and click the object in the model; Esc leaves the tool.
 
-- La trasformazione non si accumula: a ogni fotogramma si ricalcola dal riposo
-  (`Trasla · Rz · Ry · Rx · R0 · Scala attorno al pivot`).
-- Le trasformazioni si cambiano con `move!`, che non lascia voci di annullamento. Colore e opacità passano
-  da un materiale temporaneo per oggetto, in operazioni trasparenti accodate a una sola voce.
-- Stop rimette tutto a riposo. Al salvataggio il modello torna a riposo e poi riprende, così nel file
-  finisce sempre lo stato di progetto.
-- Il motore non dipende da chi batte il tempo: `advance(now)` con `view.animation`, `ext_tick(secondi)`
-  con DagaWASD.
-- Colore, opacità, visibilità, tag e piani di sezione cambiano il modello: vanno in operazioni trasparenti
-  accodate alla prima voce della sessione. Dopo un Ctrl+Z la sessione apre una voce nuova.
+## Installation
+
+Download **`dagadyn-<version>.rbz`** from the
+[latest release](https://github.com/Dagadam/dagadyn/releases/latest) (under
+*Assets*) and install it from *Extensions › Extension Manager › Install
+Extension*.
+
+Settings are stored in `%APPDATA%\DagaDyn\settings.json`: an update does not
+erase them. Animations are in the models, not in the extension.
+
+## Development
+
+The code, its comments and the changelog are in Italian; how the extension
+is built inside is in [SVILUPPO.md](SVILUPPO.md).
+
+- `installa.bat` copies the source into the Plugins folder of every SketchUp
+  it finds.
+- `tools\run_tests.bat` runs the tests (Ruby with a simulated SketchUp; the
+  curve test also needs Node.js).
+- `ruby tools\crea_rbz.rb` makes the package in `dist\`.
+- The version number lives only in `dagadyn.rb` (`VERSION`); every version
+  has its section in `CHANGELOG.md`.
+- This README is in several languages (`README.md` in English,
+  `README.it.md`, `.es`, `.fr`, `.de`, `.pt`, `.nl`, `.sv`, `.pl`, `.cs`,
+  `.ru`, `.ja`, `.ko`, `.zh`): a change goes into all of them.
+
+Contributions are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
+## Contact
+
+Bugs and ideas are better as an
+[issue](https://github.com/Dagadam/dagadyn/issues), where others can see and
+follow them; security problems go through the
+[security policy](.github/SECURITY.md). You can also write to
+[DagaWASD@icloud.com](mailto:DagaWASD@icloud.com).
+
+If DagaDyn is useful to you, you can support its development on
+[Ko-fi](https://ko-fi.com/dagadam).
+
+## License
+
+[MIT](LICENSE) © 2026 Dagadam. You may use, modify and redistribute the code
+freely, commercially too, as long as every copy keeps the copyright notice
+and the license text.
