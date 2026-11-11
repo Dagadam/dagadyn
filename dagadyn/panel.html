@@ -1,0 +1,2649 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>DagaDyn</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   COLORI E MISURE — tutto passa da queste variabili, che applyLook()
+   ricalcola da Sistema › Aspetto (tema, accento, carattere…). I valori
+   qui sotto sono il tema scuro predefinito: valgono finché Ruby non
+   manda le impostazioni. Neutri: --bg sfondo … --hi testo più chiaro;
+   --s* superfici, --l* bordi, --m* testi smorzati, --t* testi.
+═══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#151515;--sunk:#111;--s1:#1a1a1a;--s2:#1e1e1e;--s3:#232323;--s4:#2a2a2a;--s5:#333;
+  --l1:#262626;--l2:#333;--l3:#3a3a3a;--l4:#4d4d4d;
+  --m3:#5d5d5d;--m2:#6a6a6a;--m1:#8a8a8a;--m0:#9a9a9a;--t2:#bbb;--t1:#d0d0d0;--t0:#dcdcdc;--hi:#f0f0f0;
+  --edge:rgba(255,255,255,.14);
+  --acc:#00c9a7;--acc-hi:#00dbb8;--acc-ink:#0d0d0d;--acc-bg:#10352f;--acc-deep:#0b7f6c;--acc-tx:#00c9a7;--acc-tx2:#00a88c;--knob:#fff;
+  --hl:#ffd166;--hl-tx:#ffd166;--hl-ink:#111;--hl-soft:rgba(255,209,102,.09);--hl-line:rgba(255,209,102,.45);
+  --hl-bg:#2d2717;--hl-bg2:#3a3218;--hl-edge:#6b5520;
+  --dg:#c04747;--dg-hi:#d15656;--dg-ink:#fff;--dg-bg:#3a1f1f;--dg-tx:#ff8080;--dg-edge:#8a3a3a;
+  --font:'Segoe UI',system-ui,sans-serif;--fs:15px;--lh:1.55;
+  --rk:1;--sp:1;--lblw:230px;--sbw:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:var(--fs)}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--t0);
+  font:1rem/var(--lh) var(--font);
+  user-select:none;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+::-webkit-scrollbar{width:var(--sbw);height:var(--sbw)}
+::-webkit-scrollbar-track{background:var(--sunk)}
+::-webkit-scrollbar-thumb{background:var(--l3);border-radius:calc(5px*var(--rk))}
+::-webkit-scrollbar-thumb:hover{background:var(--l4)}
+/* Animazioni spente (Aspetto › Animazioni) */
+body.noanim *,body.noanim *::before,body.noanim *::after{transition:none!important}
+body.noanim .btn:active{transform:none}
+/* Descrizioni brevi nascoste (Aspetto › Mostra le descrizioni) */
+body.nohints .row .lbl .hint{display:none}
+
+/* ══ TOP BAR ══ */
+.bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px;border-bottom:1px solid var(--l1);background:var(--s1);flex:0 0 auto;
+  flex-wrap:wrap;
+}
+.bar h1{font-size:1.133rem;font-weight:700;color:var(--acc-tx);letter-spacing:.3px;white-space:nowrap}
+.bar h1 .logo:empty{display:none}
+.bar .right{display:flex;align-items:center;gap:12px}
+.dot{font-size:.933rem;color:var(--m3);white-space:nowrap}
+.dot.on{color:var(--acc-tx);font-weight:600}
+
+/* ══ BUTTONS ══ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 20px;border:none;border-radius:calc(6px*var(--rk));
+  cursor:pointer;font:600 1rem var(--font);
+  transition:background .12s,transform .06s;outline:none;
+}
+.btn:active{transform:scale(.97)}
+.btn-go  {background:var(--acc);color:var(--acc-ink)}
+.btn-go:hover{background:var(--acc-hi)}
+.btn-stop{background:var(--dg);color:var(--dg-ink)}
+.btn-stop:hover{background:var(--dg-hi)}
+.btn-sm  {background:var(--s4);color:var(--t2);font-size:.933rem;padding:8px 16px}
+.btn-sm:hover{background:var(--s5)}
+
+/* ══ TAB LIVELLO 1 ══ */
+.tabs1{
+  display:flex;gap:4px;padding:8px 12px 0;background:var(--s1);
+  border-bottom:1px solid var(--l1);flex:0 0 auto;flex-wrap:wrap;
+}
+.tabs1 button{
+  background:transparent;border:none;border-bottom:3px solid transparent;
+  color:var(--m1);cursor:pointer;outline:none;
+  font:600 1.067rem var(--font);
+  padding:10px 18px 9px;border-radius:calc(6px*var(--rk)) calc(6px*var(--rk)) 0 0;
+  transition:color .12s,background .12s,border-color .12s;
+}
+.tabs1 button:hover{color:var(--t1);background:var(--s3)}
+.tabs1 button.act{color:var(--acc-tx);border-bottom-color:var(--acc);background:var(--s3)}
+
+/* ══ TAB LIVELLO 2 (sotto-TAB) ══ */
+.tabs2{
+  display:flex;gap:6px;padding:10px 16px;background:var(--s1);
+  border-bottom:1px solid var(--l1);flex:0 0 auto;flex-wrap:wrap;
+}
+.tabs2 button{
+  background:var(--s3);border:1px solid var(--l2);color:var(--m0);
+  cursor:pointer;outline:none;border-radius:calc(20px*var(--rk));
+  font:600 .933rem var(--font);padding:6px 16px;
+  transition:all .12s;
+}
+.tabs2 button:hover{background:var(--s4);color:var(--t1)}
+.tabs2 button.act{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+
+/* ══ ICONE DEI TAB (Aspetto › Icone dei tab) ══ */
+.ti svg{width:1.15em;height:1.15em;vertical-align:-.2em;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.ti-text .ti{display:none}
+body.ti-both .ti{margin-inline-end:7px}
+body.ti-icons .tl{display:none}
+body.ti-icons .tabs1 button{padding-inline:14px}
+body.ti-icons .tabs2 button{padding-inline:11px}
+
+/* ══ CONTENUTO ══ */
+.content{flex:1 1 auto;overflow-y:auto;padding:calc(16px*var(--sp)) 18px calc(20px*var(--sp))}
+.pane{display:none}
+.pane.act{display:block}
+
+.grp{margin-bottom:calc(22px*var(--sp))}
+.grp > h3{
+  font-size:.867rem;text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--m3);margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--l1);
+}
+
+/* ══ RIGA IMPOSTAZIONE ══ */
+.row{
+  display:flex;align-items:center;gap:12px;
+  padding:calc(7px*var(--sp)) 10px;border-radius:calc(6px*var(--rk));
+}
+.row:hover{background:var(--s2)}
+.row.off{opacity:.45}
+.row .lbl{flex:0 0 var(--lblw);min-width:0}
+.row .lbl .name{
+  font-size:1rem;color:var(--t1);display:block;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.row .lbl .hint{font-size:.833rem;color:var(--m2);display:block;line-height:1.35;margin-top:1px}
+.row input[type=range]{
+  flex:1 1 auto;min-width:80px;height:6px;
+  accent-color:var(--acc);cursor:pointer;
+  -webkit-appearance:none;background:transparent;
+}
+.row input[type=range]::-webkit-slider-runnable-track{
+  height:6px;background:var(--s5);border-radius:calc(3px*var(--rk));
+}
+.row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;
+  background:var(--acc);border-radius:50%;margin-top:-6px;cursor:pointer;
+  box-shadow:0 0 0 1px var(--sunk);
+}
+/* Cursore a due maniglie (campo con hi:): due range sovrapposti con la
+   traccia trasparente; solo le maniglie prendono il mouse. La traccia è
+   ::before, il tratto fra le maniglie .fill (spanFill). */
+.span{flex:1 1 auto;min-width:80px;position:relative;height:18px;direction:ltr}
+.span::before{content:'';position:absolute;left:0;right:0;top:6px;height:6px;
+  background:var(--s5);border-radius:calc(3px*var(--rk))}
+.span .fill{position:absolute;top:6px;height:6px;background:var(--acc);opacity:.6;
+  border-radius:calc(3px*var(--rk));pointer-events:none}
+.row .span input[type=range]{position:absolute;left:0;top:6px;width:100%;margin:0;pointer-events:none}
+.row .span input[type=range]::-webkit-slider-runnable-track{background:transparent}
+.row .span input[type=range]::-webkit-slider-thumb{pointer-events:auto}
+.row .span + .nbox{flex-basis:70px;width:70px}
+.row .nbox.lo{flex-basis:70px;width:70px}
+.nbox{
+  flex:0 0 86px;width:86px;background:var(--s3);border:1px solid var(--l2);
+  color:var(--hi);padding:6px 8px;border-radius:calc(5px*var(--rk));
+  font:1rem var(--font);text-align:right;outline:none;
+}
+.nbox:focus{border-color:var(--acc);background:var(--s4)}
+.unit{flex:0 0 44px;font-size:.867rem;color:var(--m2);white-space:nowrap;unicode-bidi:plaintext}  /* in arabo «°/s» resta °/s, non s/° */
+
+/* ══ COLORE E SCELTA ══ */
+.cpick{
+  flex:0 0 46px;width:46px;height:32px;padding:2px;margin-inline-start:auto;cursor:pointer;
+  background:var(--s3);border:1px solid var(--l2);border-radius:calc(5px*var(--rk));outline:none;
+}
+.cpick:focus{border-color:var(--acc)}
+.cpick::-webkit-color-swatch-wrapper{padding:0}
+.cpick::-webkit-color-swatch{border:none;border-radius:calc(3px*var(--rk))}
+.nbox.hex{text-align:left;direction:ltr;font-family:Consolas,'Cascadia Mono',monospace;font-size:.933rem;user-select:text}
+.nbox.hex.bad{border-color:var(--dg-edge)}
+.sel{
+  flex:1 1 auto;min-width:0;max-width:320px;margin-inline-start:auto;
+  background:var(--s3);border:1px solid var(--l2);color:var(--hi);
+  padding:6px 8px;border-radius:calc(5px*var(--rk));font:1rem var(--font);outline:none;cursor:pointer;
+}
+.sel:focus{border-color:var(--acc)}
+.sel option{background:var(--s2);color:var(--t0)}
+
+/* ══ TOGGLE ══ */
+.sw{position:relative;width:50px;height:27px;flex:0 0 auto;margin-left:auto}
+.sw input{opacity:0;width:0;height:0}
+.knob{position:absolute;cursor:pointer;inset:0;background:var(--s5);border-radius:27px;transition:.18s}
+.knob::before{
+  content:'';position:absolute;width:20px;height:20px;left:4px;top:3.5px;
+  background:var(--m2);border-radius:50%;transition:.18s;
+}
+input:checked+.knob{background:var(--acc)}
+input:checked+.knob::before{transform:translateX(22px);background:var(--knob)}
+
+/* ══ LEGENDA COMANDI ══ */
+table.keys{width:100%;border-collapse:collapse;font-size:1rem}
+table.keys td{padding:calc(8px*var(--sp)) 10px;border-bottom:1px solid var(--l1)}
+table.keys td:first-child{width:180px}
+table.keys kbd{
+  display:inline-block;background:var(--s4);border:1px solid var(--l3);
+  border-bottom-width:2px;border-radius:calc(5px*var(--rk));padding:3px 10px;
+  font:600 .933rem var(--font);color:var(--acc-tx);
+}
+table.keys td:last-child{color:var(--t2)}
+
+.note{
+  font-size:.9rem;color:var(--m1);line-height:1.6;
+  background:var(--s2);border-left:3px solid var(--acc);
+  padding:10px 14px;border-radius:0 calc(5px*var(--rk)) calc(5px*var(--rk)) 0;margin-bottom:18px;
+}
+.note b{color:var(--t2)}
+
+/* ══ SELEZIONE LINGUA ══ */
+.langgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.langgrid button{
+  display:flex;align-items:center;gap:11px;text-align:left;
+  background:var(--s2);border:1px solid var(--l2);color:var(--t1);
+  border-radius:calc(7px*var(--rk));padding:9px 12px;cursor:pointer;outline:none;
+  font:1rem var(--font);transition:all .12s;
+}
+.langgrid button:hover{background:var(--s4);border-color:var(--l3);color:var(--hi)}
+.langgrid button.act{background:var(--acc-bg);border-color:var(--acc);color:var(--hi);font-weight:600}
+.langgrid svg{flex:0 0 auto;display:block;border-radius:2px;box-shadow:0 0 0 1px var(--edge)}
+.langgrid .nm{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.langgrid .chk{color:var(--acc-tx);font-weight:700}
+.auto-ico{
+  flex:0 0 auto;width:24px;height:16px;border-radius:2px;
+  background:linear-gradient(135deg,var(--acc),var(--acc-deep));
+  box-shadow:0 0 0 1px var(--edge);
+}
+/* ══ RICERCA ══ */
+.srch{
+  margin-inline-start:auto;align-self:center;position:relative;
+  display:flex;align-items:center;margin-bottom:6px;
+}
+.srch .ico{position:absolute;inset-inline-start:10px;color:var(--m2);font-size:1.067rem;pointer-events:none}
+.srch input{
+  width:210px;background:var(--s3);border:1px solid var(--l2);color:var(--hi);
+  padding:6px 44px 6px 30px;border-radius:calc(16px*var(--rk));font:.933rem var(--font);outline:none;
+  user-select:text;
+}
+body.rtl .srch input{padding:6px 30px 6px 44px}
+.srch input:focus{border-color:var(--acc);background:var(--s4)}
+.srch input.none{border-color:var(--dg-edge)}
+.srch .cnt{position:absolute;inset-inline-end:12px;font-size:.8rem;color:var(--hl-tx);pointer-events:none}
+.tabs1 button.hit,.tabs2 button.hit{color:var(--hl-tx);box-shadow:inset 0 0 0 1px var(--hl-line)}
+.tabs1 button.hit.act{border-bottom-color:var(--hl)}
+.tabs2 button.hit.act{background:var(--hl);border-color:var(--hl);color:var(--hl-ink)}
+.tabs1 button[data-n]::after,.tabs2 button[data-n]::after{
+  content:attr(data-n);margin-inline-start:7px;font-size:.733rem;font-weight:700;
+  background:var(--hl);color:var(--hl-ink);border-radius:9px;padding:1px 6px;vertical-align:1px;
+}
+.row.hit,table.keys tr.hit td,table.mat tr.hit td,.langgrid button.hit{
+  background:var(--hl-soft);
+}
+.row.hit{box-shadow:inset 3px 0 0 var(--hl)}
+body.rtl .row.hit{box-shadow:inset -3px 0 0 var(--hl)}
+.langgrid button.hit{border-color:var(--hl)}
+mark{background:var(--hl);color:var(--hl-ink);border-radius:2px;padding:0 1px}
+
+/* ══ VALORI MODIFICATI ══ */
+.row.mod .lbl .name::before{
+  content:'';display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--acc);margin-inline-end:7px;vertical-align:1px;
+}
+.rst{
+  flex:0 0 26px;width:26px;height:26px;border-radius:calc(5px*var(--rk));border:1px solid transparent;
+  background:transparent;color:var(--acc-tx);font-size:1rem;cursor:pointer;outline:none;
+  visibility:hidden;
+}
+.row.mod .rst{visibility:visible}
+.rst:hover,.rst:focus-visible{background:var(--acc-bg);border-color:var(--acc)}
+.lvsw button.mod::after{
+  content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--acc);margin-inline-start:6px;vertical-align:2px;
+}
+.lvsw button.act.mod::after{background:var(--acc-ink)}
+
+/* ══ TASTI PERSONALIZZABILI ══ */
+.kb{
+  display:inline-block;min-width:34px;background:var(--s4);border:1px solid var(--l3);
+  border-bottom-width:2px;border-radius:calc(5px*var(--rk));padding:3px 10px;cursor:pointer;outline:none;
+  font:600 .933rem var(--font);color:var(--acc-tx);transition:border-color .12s,background .12s;
+}
+.kb:hover,.kb:focus-visible{border-color:var(--acc);background:var(--s5)}
+.kb.mod{background:var(--acc-bg)}
+.kb.wait{color:var(--hl-tx);border-color:var(--hl);background:var(--hl-bg)}
+
+/* ══ LIVELLO DI DETTAGLIO ══ */
+.lvsw{
+  display:flex;background:var(--s3);border:1px solid var(--l2);border-radius:calc(18px*var(--rk));padding:3px;gap:2px;
+  min-width:0;
+}
+.lvsw button{
+  background:transparent;border:none;color:var(--m1);cursor:pointer;outline:none;
+  font:600 .9rem var(--font);padding:5px 13px;border-radius:calc(15px*var(--rk));white-space:nowrap;
+  transition:background .12s,color .12s;
+}
+.lvsw button:hover{color:var(--t1);background:var(--s4)}
+.lvsw button.act{background:var(--acc);color:var(--acc-ink)}
+/* elementi sopra il livello scelto: nascosti (e ignorati dalla ricerca) */
+body[data-lv="1"] [data-lv="2"],body[data-lv="1"] [data-lv="3"],
+body[data-lv="2"] [data-lv="3"]{display:none!important}
+[data-lv="99"]{display:none!important}  /* parti assenti da questo pacchetto (vedi absent) */
+
+/* ══ GUIDA ("?") ══ */
+.btn-help{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--l3);background:var(--s3);
+  color:var(--t2);font:700 1.067rem var(--font);cursor:pointer;outline:none;flex:0 0 auto;
+  transition:all .12s;
+}
+.btn-help:hover,.btn-help:focus-visible{border-color:var(--acc);color:var(--acc-tx)}
+.modal{
+  position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+.modal.open{display:flex}
+.modal .card{
+  position:relative;background:var(--s2);border:1px solid var(--l2);border-radius:calc(10px*var(--rk));
+  max-width:540px;width:100%;max-height:100%;overflow-y:auto;padding:20px 22px 18px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);user-select:text;
+}
+.modal h2{font-size:1.2rem;color:var(--acc-tx);margin:0 30px 8px 0}
+.modal p{color:var(--t2);margin-bottom:12px}
+.modal ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.modal li{color:var(--t2);font-size:.933rem;padding-inline-start:16px;position:relative}
+.modal li::before{content:'';position:absolute;inset-inline-start:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--acc)}
+.modal kbd{
+  display:inline-block;background:var(--s4);border:1px solid var(--l3);border-bottom-width:2px;
+  border-radius:calc(4px*var(--rk));padding:0 6px;margin:0 1px;font:600 .833rem var(--font);color:var(--acc-tx);
+}
+.modal .x{
+  position:absolute;top:12px;inset-inline-end:12px;width:30px;height:30px;border-radius:calc(6px*var(--rk));
+  background:transparent;border:none;color:var(--m1);font-size:1.2rem;cursor:pointer;outline:none;
+}
+.modal .x:hover,.modal .x:focus-visible{background:var(--s4);color:var(--hi)}
+body.rtl .modal h2{margin:0 0 8px 30px}
+
+/* ══ REGISTRO ERRORI ══ */
+.btn-warn{
+  height:32px;border-radius:calc(16px*var(--rk));border:1px solid var(--hl-edge);background:var(--hl-bg);
+  color:var(--hl-tx);font:700 .9rem var(--font);padding:0 12px;cursor:pointer;outline:none;
+  flex:0 0 auto;
+}
+.btn-warn:hover,.btn-warn:focus-visible{border-color:var(--hl);background:var(--hl-bg2)}
+.btn-warn[hidden]{display:none}
+.modal .card.wide{max-width:780px}
+.logpath{font-size:.8rem;color:var(--m2);margin-bottom:8px;word-break:break-all;user-select:text}
+.logpre{
+  background:var(--sunk);border:1px solid var(--l1);border-radius:calc(6px*var(--rk));padding:10px 12px;
+  font:.833rem/1.45 Consolas,'Cascadia Mono',monospace;color:var(--t1);
+  white-space:pre-wrap;word-break:break-word;max-height:55vh;min-height:120px;overflow:auto;
+  user-select:text;
+}
+.logpre.empty{color:var(--m2);font-family:var(--font);font-size:.933rem}
+.logpre .ts{color:var(--hl-tx)}
+.modal .mbtns{flex-wrap:wrap}
+
+/* ══ FOOTER ══ */
+.foot{
+  display:flex;gap:10px;justify-content:flex-end;align-items:center;
+  padding:11px 16px;border-top:1px solid var(--l1);background:var(--s1);flex:0 0 auto;
+}
+.foot .status{
+  margin-inline-end:auto;flex:1 1 auto;min-width:0;
+  font-size:.833rem;line-height:1.35;color:var(--m3);
+  height:4.05em;overflow:hidden;display:flex;flex-direction:column;justify-content:center;
+}
+/* spiegazione dell'impostazione sotto il mouse (altezza fissa: niente salti) */
+.foot .status.info{color:var(--m0);display:block;overflow-y:auto}
+.foot .status b{color:var(--t1);font-weight:600}
+.foot .status .meta{display:block;color:var(--acc-tx2);margin-top:2px}
+.foot .status.flash{color:var(--hl-tx)}
+
+/* ══ RTL ══ */
+body.rtl{direction:rtl}
+body.rtl .row .lbl .name,body.rtl .row .lbl .hint{text-align:right}
+body.rtl .langgrid button{text-align:right}
+body.rtl table.keys td{text-align:right}
+body.rtl .note{border-left:none;border-right:3px solid var(--acc);border-radius:calc(5px*var(--rk)) 0 0 calc(5px*var(--rk))}
+/* menu del destro nelle caselle: Taglia, Copia, Incolla nella lingua del pannello
+   (quello del browser è in inglese, con Ispeziona e DevTools) */
+.menuctx{position:fixed;z-index:50;min-width:170px;padding:4px;border-radius:8px;background:var(--s4);
+  border:1px solid var(--l3);box-shadow:0 8px 24px rgba(0,0,0,.35);display:none}
+.menuctx.aperto{display:block}
+.menuctx button{display:flex;width:100%;gap:18px;justify-content:space-between;border:0;border-radius:5px;
+  background:none;color:var(--t0);font:inherit;padding:6px 10px;text-align:start;cursor:pointer}
+.menuctx button:hover:not(:disabled),.menuctx button:focus-visible{background:var(--acc);color:var(--acc-ink);outline:0}
+.menuctx button:disabled{opacity:.4;cursor:default}
+.menuctx kbd{font:inherit;opacity:.65}
+
+/* ══════════════════════════════════════════════════════════════
+   DagaDyn — parti proprie: timeline, tracce, editor delle curve
+══════════════════════════════════════════════════════════════ */
+.mbtns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+
+/* ══ TIMELINE ══ */
+.transport{
+  display:flex;align-items:center;gap:10px;padding:8px 16px;flex:0 0 auto;
+  background:var(--s1);border-bottom:1px solid var(--l1);direction:ltr;
+}
+.tbtn{
+  width:34px;height:34px;flex:0 0 34px;border-radius:50%;border:1px solid var(--l3);
+  background:var(--s3);color:var(--t1);cursor:pointer;outline:none;font-size:.95rem;line-height:1;
+  transition:background .12s,border-color .12s;
+}
+.tbtn:hover,.tbtn:focus-visible{border-color:var(--acc);color:var(--acc-tx)}
+.tbtn.go{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.tbtn.go:hover{background:var(--acc-hi);color:var(--acc-ink)}
+.tbtn:disabled{opacity:.4;cursor:default}
+.transport input[type=range]{
+  flex:1 1 auto;min-width:60px;height:6px;accent-color:var(--acc);cursor:pointer;
+  -webkit-appearance:none;background:transparent;
+}
+.transport input[type=range]::-webkit-slider-runnable-track{height:6px;background:var(--s5);border-radius:calc(3px*var(--rk))}
+.transport input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;background:var(--acc);border-radius:50%;margin-top:-5px;
+  box-shadow:0 0 0 1px var(--sunk);
+}
+.ttime{flex:0 0 auto;min-width:118px;text-align:right;font-size:.9rem;color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ttime b{color:var(--acc-tx);font-weight:600}
+.tbake{flex:0 0 auto;background:var(--s4);border:none;color:var(--t2);border-radius:calc(5px*var(--rk));
+  padding:6px 10px;cursor:pointer;font:inherit;font-size:.867rem;white-space:nowrap}
+.tbake:hover{background:var(--s5)}
+.tbake:disabled{opacity:.4;cursor:default}
+
+/* ══ OGGETTO E TRACCE ══ */
+.obhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.obhead .obn{font-size:1.15rem;font-weight:700;color:var(--hi);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-size:.767rem;padding:2px 9px;border-radius:10px;background:var(--s4);color:var(--m0);white-space:nowrap}
+.badge.live{background:var(--acc-bg);color:var(--acc-tx)}
+.obhead .sp{flex:1 1 auto}
+.obhead .sel{flex:0 1 220px}
+.obhead label{font-size:.867rem;color:var(--m1);white-space:nowrap}
+
+.tcard{background:var(--s2);border:1px solid var(--l2);border-radius:calc(8px*var(--rk));
+  padding:calc(10px*var(--sp)) 12px;margin-bottom:calc(10px*var(--sp))}
+.tcard.off .tbody{opacity:.5}
+.thd{display:flex;align-items:center;gap:10px}
+.thd .tn{flex:1 1 auto;font-weight:700;color:var(--t0);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thd .tn small{font-weight:400;color:var(--m2);margin-inline-start:6px}
+.thd .sw{margin-left:0}
+.tmeta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:8px 0 6px;font-size:.9rem;color:var(--m1)}
+.tmeta .f{display:flex;align-items:center;gap:6px}
+.tmeta .sel{max-width:170px;padding:4px 6px;font-size:.933rem}
+.tmeta .tot{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+.vbox{flex:0 0 92px;width:92px;background:var(--s3);border:1px solid var(--l2);color:var(--hi);padding:5px 8px;
+  border-radius:calc(5px*var(--rk));font:1rem var(--font);text-align:right;outline:none;user-select:text}
+.vbox:focus{border-color:var(--acc);background:var(--s4)}
+.vbox.sm{flex-basis:70px;width:70px}
+.vu{font-size:.867rem;color:var(--m2);min-width:22px}
+.kst{display:flex;align-items:center;gap:8px;padding:3px 0;flex-wrap:wrap}
+.kdot{width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+.kst .kl{font-size:.9rem;color:var(--t2);min-width:70px}
+.ktr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:5px;padding:4px 0 4px 16px;
+  border-inline-start:2px dashed var(--l3);font-size:.9rem;color:var(--m1)}
+body.rtl .ktr{padding:4px 16px 4px 0}
+.cthumb{flex:0 0 auto;width:76px;height:34px;padding:0;background:var(--sunk);border:1px solid var(--l2);
+  border-radius:calc(4px*var(--rk));cursor:pointer;outline:none}
+.cthumb:hover,.cthumb:focus-visible{border-color:var(--acc)}
+.cthumb svg{display:block;width:100%;height:100%}
+.cthumb path{stroke:var(--acc);fill:none;stroke-width:2}
+.cthumb line{stroke:var(--l2);stroke-width:1}
+.cname{font-size:.867rem;color:var(--t2)}
+.ibtn{background:var(--s4);border:none;color:var(--t2);border-radius:calc(5px*var(--rk));
+  padding:4px 9px;cursor:pointer;font:inherit;font-size:.867rem;white-space:nowrap;outline:none}
+.ibtn:hover,.ibtn:focus-visible{background:var(--s5);color:var(--t1)}
+.ibtn.del:hover,.ibtn.del:focus-visible{background:var(--dg-bg);color:var(--dg-tx)}
+.ibtn.ghost{background:transparent;color:var(--m1)}
+.kst .cpick{flex:0 0 46px;margin-inline-start:0}
+.kst .nbox.hex{flex:0 0 92px;width:92px}
+.addrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+button.kdot{border:0;padding:0;cursor:pointer}
+.kst .sel{flex:0 1 200px;max-width:200px}
+button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
+.startrow{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:6px 0 10px;font-size:.933rem;color:var(--m1)}
+.startrow .f{display:flex;align-items:center;gap:6px}
+.startrow .sel{max-width:220px;padding:4px 6px}
+.multi{display:flex;gap:8px;align-items:center;margin:4px 0 2px;font-weight:600}
+.note.sm{font-size:.85rem;margin:2px 0 8px}
+.addrow .sel{flex:0 1 260px}
+.empty{color:var(--m1);font-size:.95rem;margin:4px 2px 12px}
+
+/* ══ SCENA ══ */
+.slist{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;background:var(--s2);
+  border:1px solid var(--l2);border-radius:calc(6px*var(--rk));cursor:pointer;text-align:start;color:var(--t1);font:inherit}
+.srow:hover{border-color:var(--acc);background:var(--s3)}
+.srow.cur{box-shadow:inset 3px 0 0 var(--acc)}
+.srow .sn{flex:1 1 auto;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .sd{font-size:.867rem;color:var(--m1);font-variant-numeric:tabular-nums;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:4px;flex:1 0 100%}
+.chip{font-size:.733rem;padding:1px 7px;border-radius:9px;background:var(--s4);color:var(--m0)}
+.stot{margin:10px 2px 0;font-size:.9rem;color:var(--m1)}
+
+/* ══ EDITOR DELLE CURVE ══ */
+.modal .card.curve{max-width:680px}
+.cvhead{font-size:.9rem;color:var(--m1);margin:-4px 0 10px}
+.cvbox{position:relative}
+#cvsvg{display:block;width:100%;height:auto;background:var(--sunk);border:1px solid var(--l1);
+  border-radius:calc(6px*var(--rk));touch-action:none;user-select:none;cursor:crosshair}
+#cvsvg .g{stroke:var(--l1);stroke-width:1}
+#cvsvg .g1{stroke:var(--l3);stroke-width:1}
+#cvsvg .gl{fill:var(--m2);font-size:11px;font-family:var(--font)}
+#cvsvg .crv{stroke:var(--acc);stroke-width:2.5;fill:none;stroke-linejoin:round}
+#cvsvg .head{stroke:var(--hl);stroke-width:1.5;stroke-dasharray:3 3}
+#cvsvg .hdot{fill:var(--hl)}
+#cvsvg .pt{fill:var(--s2);stroke:var(--acc);stroke-width:2.2;cursor:grab}
+#cvsvg .pt:hover{fill:var(--acc-bg)}
+#cvsvg .pt.drag{fill:var(--acc);cursor:grabbing}
+#cvsvg .pt.end{stroke:var(--m1);fill:var(--s4);cursor:default}
+.cvinfo{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.833rem;color:var(--m2);margin:6px 2px 0}
+.cvinfo b{color:var(--t1);font-weight:600;font-variant-numeric:tabular-nums}
+.cvprev{position:relative;height:38px;margin:12px 0 4px;background:var(--s1);border:1px solid var(--l1);
+  border-radius:calc(6px*var(--rk));overflow:hidden;direction:ltr}
+.cvprev .rail{position:absolute;left:15%;right:15%;top:18px;height:2px;background:var(--l3)}
+.cvprev .mk{position:absolute;top:10px;width:2px;height:18px;background:var(--m2)}
+.cvprev .ball{position:absolute;top:9px;width:20px;height:20px;margin-left:-10px;border-radius:50%;
+  background:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+.cvprev .lab{position:absolute;bottom:1px;font-size:.733rem;color:var(--m1);transform:translateX(-50%);white-space:nowrap}
+.cvpres{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:12px}
+.pbtn{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--s3);border:1px solid var(--l2);
+  border-radius:calc(6px*var(--rk));padding:6px 4px 5px;cursor:pointer;color:var(--t2);font:inherit;font-size:.8rem;outline:none}
+.pbtn:hover,.pbtn:focus-visible{border-color:var(--acc)}
+.pbtn.act{border-color:var(--acc);background:var(--acc-bg);color:var(--hi)}
+.pbtn svg{width:54px;height:30px}
+.pbtn path{stroke:currentColor;fill:none;stroke-width:2}
+.cvtips{font-size:.8rem;color:var(--m2);margin-top:10px;line-height:1.45}
+.cvtips kbd{display:inline-block;background:var(--s4);border:1px solid var(--l3);border-radius:4px;padding:0 5px;font:600 .75rem var(--font);color:var(--acc-tx)}
+
+</style>
+</head>
+<body data-lv="1">
+
+<div class="bar">
+  <h1><span class="logo" id="logo">〰</span> DagaDyn</h1>
+  <div class="lvsw" id="lvsw"></div>
+  <div class="right">
+    <button class="btn-warn" id="btnLog" hidden onclick="openLog()"></button>
+    <button class="btn-help" id="btnHelp" onclick="openHelp()">?</button>
+    <span class="dot" id="dot">● —</span>
+    <button class="btn btn-go" id="btnT" onclick="tpCmd('toggle')">▶</button>
+  </div>
+</div>
+
+<!-- Timeline: sempre visibile. Lo stato arriva da Ruby con setTransport. -->
+<div class="transport">
+  <button class="tbtn" id="tpStop" onclick="tpCmd('stop')">⏹</button>
+  <button class="tbtn go" id="tpPlay" onclick="tpCmd('toggle')">▶</button>
+  <input type="range" id="tpSlider" min="0" max="1" step="0.001" value="0"
+         oninput="scrubInput(this)" onchange="scrubEnd(this)">
+  <span class="ttime" id="tpTime">0.00 / 0.00 s</span>
+  <button class="tbake" id="tpBake" data-lv="2" onclick="tpCmd('bake')">—</button>
+</div>
+
+<div class="tabs1" id="tabs1"></div>
+<div class="tabs2" id="tabs2"></div>
+<div class="content" id="content"></div>
+
+<div class="modal" id="logm" onclick="if(event.target === this) closeLog()">
+  <div class="card wide" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+    <button class="x" id="logX" onclick="closeLog()">✕</button>
+    <h2 id="logTitle"></h2>
+    <div class="logpath" id="logPath"></div>
+    <div class="logpre" id="logPre"></div>
+    <div class="mbtns">
+      <button class="btn btn-sm" id="logRefresh" onclick="sketchup.read_log()"></button>
+      <button class="btn btn-sm" id="logCopy" onclick="copyLog()"></button>
+      <button class="btn btn-sm" id="logClear" onclick="sketchup.clear_log()"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="help" onclick="if(event.target === this) closeHelp()">
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <button class="x" id="helpX" onclick="closeHelp()">✕</button>
+    <div id="helpBody"></div>
+  </div>
+</div>
+
+<!-- Editor della curva di una transizione (openCurve) -->
+<div class="modal" id="curvem" onclick="if(event.target === this) closeCurve()">
+  <div class="card curve" role="dialog" aria-modal="true" aria-labelledby="cvTitle">
+    <button class="x" id="cvX" onclick="closeCurve()">✕</button>
+    <h2 id="cvTitle"></h2>
+    <div class="cvhead" id="cvHead"></div>
+    <div class="cvbox"><svg id="cvsvg" viewBox="0 0 560 330"></svg></div>
+    <div class="cvinfo"><span id="cvPos"></span><span id="cvName"></span></div>
+    <div class="cvprev" id="cvPrev"></div>
+    <div class="cvpres" id="cvPres"></div>
+    <div class="mbtns">
+      <button class="btn btn-sm" id="cvMirror" onclick="curveMirror()"></button>
+      <button class="btn btn-sm" id="cvAll" onclick="curveToAll()"></button>
+      <button class="btn btn-go" id="cvDone" onclick="closeCurve()"></button>
+    </div>
+    <div class="cvtips" id="cvTips"></div>
+  </div>
+</div>
+
+<div class="foot">
+  <span class="status" id="status"></span>
+  <button class="btn btn-sm" id="btnReset" onclick="resetAll()">—</button>
+  <button class="btn btn-go" id="btnSave" onclick="saveNow()">—</button>
+</div>
+<div class="menuctx" id="menuctx" role="menu">
+  <button role="menuitem" id="c-cut" data-a="cut"><span id="t-cut"></span><kbd>Ctrl+X</kbd></button>
+  <button role="menuitem" id="c-copy" data-a="copy"><span id="t-copy"></span><kbd>Ctrl+C</kbd></button>
+  <button role="menuitem" id="c-paste" data-a="paste"><span id="t-paste"></span><kbd>Ctrl+V</kbd></button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   STRUTTURA — solo id e intervalli numerici.
+   Tutti i testi vivono nei file lang/<codice>.json e arrivano da
+   Ruby: etichetta = "f.<chiave>", descrizione = "h.<chiave>"
+   (se la chiave h.* manca, la riga non ha descrizione).
+   lv = livello di dettaglio: 1 base (predefinito), 2 avanzate,
+   3 molto avanzate. Gruppi, sotto-tab e tab ereditano il livello
+   più basso fra quelli che contengono.
+   Stesso telaio del pannello di DagaWASD: aspetto, lingue, ricerca,
+   livelli, backup e registro funzionano allo stesso modo.
+═══════════════════════════════════════════════════════════════ */
+/* ═══ Aspetto: tabelle ═══ */
+const FONT_NAMES = {segoe:'Segoe UI', tahoma:'Tahoma', verdana:'Verdana', trebuchet:'Trebuchet MS',
+                    georgia:'Georgia', calibri:'Calibri', consolas:'Consolas', comic:'Comic Sans MS'};
+const FONT_STACK = {
+  segoe:"'Segoe UI',system-ui,sans-serif", tahoma:'Tahoma,Geneva,sans-serif',
+  verdana:'Verdana,Geneva,sans-serif', trebuchet:"'Trebuchet MS',sans-serif",
+  georgia:"Georgia,'Times New Roman',serif", calibri:'Calibri,Carlito,sans-serif',
+  consolas:"Consolas,'Cascadia Mono',monospace", comic:"'Comic Sans MS','Comic Neue',cursive",
+  system:"system-ui,-apple-system,'Segoe UI',sans-serif",
+};
+const LOGOS = {wave:'〰', film:'🎞', bolt:'⚡', cube:'🧊', spark:'✨'};
+const THEMES = {
+  dark:     {bg:'#151515', fg:'#dcdcdc'},
+  light:    {bg:'#f5f6f8', fg:'#1e2227'},
+  midnight: {bg:'#0f1522', fg:'#d5deec'},
+  warm:     {bg:'#1d1915', fg:'#eadfcc'},
+  contrast: {bg:'#000000', fg:'#ffffff', boost:true},
+};
+/* posizione di ogni neutro fra sfondo (0) e testo (1) */
+const NEUTRALS = {bg:0, sunk:-.025, s1:.025, s2:.045, s3:.07, s4:.1, s5:.15,
+                  l1:.085, l2:.15, l3:.19, l4:.28, m3:.36, m2:.45, m1:.6, m0:.67,
+                  t2:.8, t1:.93, t0:1, hi:1.08};
+const BOOST = {l1:.3, l2:.45, l3:.55, l4:.65, m3:.62, m2:.72, m1:.8, m0:.85, t2:.92};
+const ICONS = {
+  anim:   '<path d="M3 17c3 0 4-10 9-10s6 10 9 10"/><circle cx="3" cy="17" r="1.6"/><circle cx="21" cy="17" r="1.6"/>',
+  obj:    '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  scene:  '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 4v16"/>',
+  opts:   '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  play:   '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
+  edit:   '<path d="M4 20c4 0 4-12 8-12s4 12 8 12"/><circle cx="12" cy="8" r="2"/>',
+  system: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3m0 13v3M2.5 12h3m13 0h3M5.3 5.3l2.1 2.1m9.2 9.2l2.1 2.1M5.3 18.7l2.1-2.1m9.2-9.2l2.1-2.1"/>',
+  lang:   '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  look:   '<path d="M12 3a9 9 0 100 18c1.6 0 2.1-1.1 2.1-2 0-1.2-1-1.6-1-2.6 0-1.1.9-1.9 2.2-1.9H18a3 3 0 003-3c0-4.6-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>',
+  backup: '<path d="M12 3v12m-4-4l4 4 4-4M4 17v3h16v-3"/>',
+  log:    '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.2"/>',
+};
+function tabLabel(prefix, id){
+  return `<span class="ti"><svg viewBox="0 0 24 24">${ICONS[id] || ''}</svg></span><span class="tl">${esc(T(prefix + id))}</span>`;
+}
+
+/* Curve pronte (gli stessi punti di PRESET_POINTS in lib/curves.rb, che
+   li manda anche con applyLang: valgono quelli di Ruby) */
+let PRESETS = {
+  linear:[[0,0],[1,1]], ease_in:[[0,0],[0.5,0.125],[0.75,0.42],[1,1]],
+  ease_out:[[0,0],[0.25,0.58],[0.5,0.875],[1,1]], ease_in_out:[[0,0],[0.25,0.0625],[0.5,0.5],[0.75,0.9375],[1,1]],
+  back:[[0,0],[0.5,0.85],[0.72,1.1],[1,1]], elastic:[[0,0],[0.25,1.3],[0.45,0.85],[0.62,1.08],[0.78,0.97],[0.9,1.01],[1,1]],
+  bounce:[[0,0],[0.2,0.3],[0.36,1,1],[0.54,0.75],[0.73,1,1],[0.83,0.94],[0.91,1,1],[0.955,0.985],[1,1]],
+  steps:[[0,0],[0.32,0,1],[0.34,0.333,1],[0.65,0.333,1],[0.67,0.667,1],[0.98,0.667,1],[1,1]],
+};
+const CURVE_IDS = ['linear','ease_in','ease_out','ease_in_out','back','elastic','bounce','steps'];
+
+const SPEC = [
+/* Animazione: l'oggetto selezionato e l'elenco di quelli animati (riquadri speciali) */
+{ id:'anim', subs:[
+  { id:'obj',   special:'obj' },
+  { id:'scene', special:'scene' },
+]},
+
+{ id:'opts', subs:[
+  { id:'play', groups:[
+    { id:'play', fields:[
+      {k:'play_speed',   u:'×',  min:0.1, max:4,  step:0.05},
+      {k:'play_repeat',  type:'bool'},
+      {k:'stop_restore', type:'bool', lv:2},
+      {k:'play_no_shadows', type:'bool'},
+      {k:'panel_fps',    u:'Hz', min:1,   max:30, step:1, int:true, lv:3},
+    ]},
+    { id:'wasd', fields:[
+      {k:'with_dagawasd', type:'bool'},
+    ]},
+  ]},
+  { id:'edit', groups:[
+    { id:'newtrack', fields:[
+      {k:'new_duration', u:'s', min:0.05, max:30, step:0.05},
+      {k:'new_curve', type:'choice', opts:CURVE_IDS, lab:'cv.'},
+      {k:'new_pivot', type:'choice', opts:['base','center','min','origin'], lab:'pv.', lv:2},
+      {k:'follow_selection', type:'bool', lv:2},
+      {k:'edit_preview', type:'bool'},
+    ]},
+    { id:'paths', fields:[
+      {k:'show_paths', type:'bool'},
+      {k:'paths_all',  type:'bool'},
+    ]},
+    { id:'curveed', fields:[
+      {k:'curve_snap', type:'bool'},
+      {k:'curve_grid', u:'n', min:2, max:20, step:1, int:true, lv:2},
+      {k:'color_mix', type:'choice', opts:['oklab','rgb'], lv:3},
+    ]},
+  ]},
+]},
+
+{ id:'system', subs:[
+  { id:'lang',  special:'lang' },
+  /* Aspetto: type 'color' = '#rrggbb'; type 'choice' = una fra opts (etichetta
+     tradotta o.<chiave>.<valore>) o fra le chiavi di lit (etichetta fissa: nomi
+     di caratteri, emoji). I valori ammessi sono gli stessi di LOOK_CHOICES in
+     lib/config.rb. L'aspetto si applica subito: vedi applyLook. */
+  { id:'look', note:'look.note', foot:'look', groups:[
+    { id:'theme', fields:[
+      {k:'ui_theme', type:'choice', opts:['auto','dark','light','midnight','warm','contrast']},
+      {k:'ui_accent',    type:'color'},
+      {k:'ui_highlight', type:'color', lv:2},
+      {k:'ui_danger',    type:'color', lv:2},
+      {k:'ui_custom_colors', type:'bool', lv:3},
+      {k:'ui_bg',   type:'color', lv:3, dep:'ui_custom_colors'},
+      {k:'ui_text', type:'color', lv:3, dep:'ui_custom_colors'},
+    ]},
+    { id:'font', fields:[
+      {k:'ui_font', type:'choice', lit:FONT_NAMES, opts:['system']},
+      {k:'ui_font_size',   u:'px', min:12,  max:20, step:0.5},
+      {k:'ui_line_height', u:'×',  min:1.2, max:2,  step:0.05, lv:3},
+    ]},
+    { id:'layout', fields:[
+      {k:'ui_radius',      u:'px', min:0,   max:16,  step:1, int:true, lv:2},
+      {k:'ui_spacing',     u:'×',  min:0.6, max:1.6, step:0.05, lv:2},
+      {k:'ui_hints',       type:'bool', lv:2},
+      {k:'ui_animations',  type:'bool', lv:2},
+      {k:'ui_label_width', u:'px', min:150, max:360, step:5, int:true, lv:3},
+      {k:'ui_scrollbar',   u:'px', min:4,   max:16,  step:1, int:true, lv:3},
+    ]},
+    { id:'icons', fields:[
+      {k:'ui_tab_icons', type:'choice', opts:['text','both','icons']},
+      {k:'ui_logo', type:'choice', lit:LOGOS, opts:['none'], lv:2},
+    ]},
+  ]},
+  { id:'backup', special:'backup' },
+  { id:'log',    special:'log' },
+]},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   BANDIERE — SVG inline 24×16.
+   Su Windows le emoji bandiera non hanno glifo (escono come "IT",
+   "FR"…), quindi vanno disegnate. Le forme sono semplificate:
+   servono a riconoscere la lingua a colpo d'occhio, non a essere
+   riproduzioni araldiche.
+═══════════════════════════════════════════════════════════════ */
+function sv(inner){
+  return `<svg width="24" height="16" viewBox="0 0 24 16">${inner}</svg>`;
+}
+function bands(cols, vert){           // strisce uguali
+  const n = cols.length, s = (vert ? 24 : 16) / n;
+  return sv(cols.map((c, i) => vert
+    ? `<rect x="${i*s}" y="0" width="${s}" height="16" fill="${c}"/>`
+    : `<rect x="0" y="${i*s}" width="24" height="${s}" fill="${c}"/>`).join(''));
+}
+function wband(parts){                // strisce orizzontali pesate [colore,peso]
+  const tot = parts.reduce((a, p) => a + p[1], 0);
+  let y = 0;
+  return sv(parts.map(p => {
+    const h = 16 * p[1] / tot, r = `<rect x="0" y="${y}" width="24" height="${h}" fill="${p[0]}"/>`;
+    y += h; return r;
+  }).join(''));
+}
+function nordic(bg, cr, inner){       // croce scandinava
+  let s = `<rect width="24" height="16" fill="${bg}"/>`
+        + `<rect x="6" y="0" width="4" height="16" fill="${cr}"/>`
+        + `<rect x="0" y="6" width="24" height="4" fill="${cr}"/>`;
+  if(inner) s += `<rect x="7" y="0" width="2" height="16" fill="${inner}"/>`
+              +  `<rect x="0" y="7" width="24" height="2" fill="${inner}"/>`;
+  return sv(s);
+}
+function star(cx, cy, r, fill, rot){  // stella a 5 punte
+  let p = '';
+  for(let i = 0; i < 10; i++){
+    const a = (rot || -90) * Math.PI/180 + i * Math.PI/5;
+    const rr = i % 2 ? r * 0.382 : r;
+    p += (i ? 'L' : 'M') + (cx + rr*Math.cos(a)).toFixed(2) + ' ' + (cy + rr*Math.sin(a)).toFixed(2);
+  }
+  return `<path d="${p}Z" fill="${fill}"/>`;
+}
+
+const FLAGS = {
+  ar: () => sv('<rect width="24" height="16" fill="#186648"/><rect x="4" y="5" width="16" height="1.6" fill="#fff"/><path d="M4 9h14l2 2-2 2H4z" fill="#fff"/>'),
+  bg: () => bands(['#fff','#00966e','#d62612']),
+  cs: () => sv('<rect width="24" height="8" fill="#fff"/><rect y="8" width="24" height="8" fill="#d7141a"/><path d="M0 0l11 8-11 8z" fill="#11457e"/>'),
+  da: () => nordic('#c60c30', '#fff'),
+  de: () => bands(['#000','#dd0000','#ffce00']),
+  el: () => sv('<rect width="24" height="16" fill="#fff"/>'
+      + [0,2,4,6,8].map(i => `<rect y="${i*1.78}" width="24" height="1.78" fill="#0d5eaf"/>`).join('')
+      + '<rect width="8.9" height="8.9" fill="#0d5eaf"/><rect x="3.6" y="0" width="1.8" height="8.9" fill="#fff"/><rect x="0" y="3.55" width="8.9" height="1.8" fill="#fff"/>'),
+  en: () => sv('<rect width="24" height="16" fill="#012169"/>'
+      + '<path d="M0 0l24 16M24 0L0 16" stroke="#fff" stroke-width="3.2"/>'
+      + '<path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" stroke-width="1.9"/>'
+      + '<path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5.3"/>'
+      + '<path d="M12 0v16M0 8h24" stroke="#c8102e" stroke-width="3.2"/>'),
+  es: () => wband([['#aa151b',1],['#f1bf00',2],['#aa151b',1]]),
+  et: () => bands(['#0072ce','#000','#fff']),
+  fi: () => nordic('#fff', '#003580'),
+  fr: () => bands(['#002395','#fff','#ed2939'], true),
+  he: () => sv('<rect width="24" height="16" fill="#fff"/><rect y="2" width="24" height="2" fill="#0038b8"/><rect y="12" width="24" height="2" fill="#0038b8"/>'
+      + '<path d="M12 5l2.6 4.5H9.4zM12 11L9.4 6.5h5.2z" fill="none" stroke="#0038b8" stroke-width="1"/>'),
+  hi: () => sv('<rect width="24" height="5.33" fill="#ff9933"/><rect y="5.33" width="24" height="5.33" fill="#fff"/><rect y="10.66" width="24" height="5.34" fill="#138808"/>'
+      + '<circle cx="12" cy="8" r="2" fill="none" stroke="#000080" stroke-width="0.7"/>'),
+  hr: () => sv('<rect width="24" height="5.33" fill="#ff0000"/><rect y="5.33" width="24" height="5.33" fill="#fff"/><rect y="10.66" width="24" height="5.34" fill="#171796"/>'
+      + '<path d="M9.6 4.4h4.8v3.2q0 2.4-2.4 3.4-2.4-1-2.4-3.4z" fill="#fff" stroke="#ff0000" stroke-width="0.7"/>'),
+  hu: () => bands(['#ce2939','#fff','#477050']),
+  id: () => bands(['#ce1126','#fff']),
+  it: () => bands(['#009246','#fff','#ce2b37'], true),
+  ja: () => sv('<rect width="24" height="16" fill="#fff"/><circle cx="12" cy="8" r="4.8" fill="#bc002d"/>'),
+  ko: () => sv('<rect width="24" height="16" fill="#fff"/>'
+      + '<path d="M12 3.6a4.4 4.4 0 010 8.8 2.2 2.2 0 000-4.4 2.2 2.2 0 010-4.4z" fill="#cd2e3a"/>'
+      + '<path d="M12 3.6a4.4 4.4 0 000 8.8 2.2 2.2 0 010-4.4 2.2 2.2 0 000-4.4z" fill="#0047a0"/>'
+      + '<g fill="#000"><rect x="2" y="3" width="4" height="0.7"/><rect x="2" y="4.3" width="4" height="0.7"/>'
+      + '<rect x="18" y="11.3" width="4" height="0.7"/><rect x="18" y="12.6" width="4" height="0.7"/></g>'),
+  lt: () => bands(['#fdb913','#006a44','#c1272d']),
+  lv: () => wband([['#9e3039',2],['#fff',1],['#9e3039',2]]),
+  nb: () => nordic('#ef2b2d', '#fff', '#002868'),
+  nl: () => bands(['#ae1c28','#fff','#21468b']),
+  pl: () => bands(['#fff','#dc143c']),
+  pt: () => sv('<rect width="24" height="16" fill="#da291c"/><rect width="9.6" height="16" fill="#046a38"/>'
+      + '<circle cx="9.6" cy="8" r="3.4" fill="none" stroke="#ffe900" stroke-width="1"/><rect x="8.2" y="6.6" width="2.8" height="2.8" fill="#fff" stroke="#da291c" stroke-width="0.6"/>'),
+  ro: () => bands(['#002b7f','#fcd116','#ce1126'], true),
+  ru: () => bands(['#fff','#0039a6','#d52b1e']),
+  sk: () => sv('<rect width="24" height="5.33" fill="#fff"/><rect y="5.33" width="24" height="5.33" fill="#0b4ea2"/><rect y="10.66" width="24" height="5.34" fill="#ee1c25"/>'
+      + '<path d="M6 4.6h5.2v3.6q0 2.6-2.6 3.6Q6 10.8 6 8.2z" fill="#ee1c25" stroke="#fff" stroke-width="0.7"/>'
+      + '<path d="M8.6 5.8v4.4M7.2 7.4h2.8M7.4 8.8h2.4" stroke="#fff" stroke-width="0.7"/>'),
+  sl: () => sv('<rect width="24" height="5.33" fill="#fff"/><rect y="5.33" width="24" height="5.33" fill="#0b4ea2"/><rect y="10.66" width="24" height="5.34" fill="#ee1c25"/>'
+      + '<path d="M5.4 4.4h5.2v3.4q0 2.6-2.6 3.6-2.6-1-2.6-3.6z" fill="#0b4ea2" stroke="#fff" stroke-width="0.7"/>'
+      + '<path d="M8 5.2l1.5 2.6h-3z" fill="#fff"/>'),
+  sr: () => bands(['#c6363c','#0c4076','#fff']),
+  sv: () => nordic('#006aa7', '#fecc02'),
+  th: () => wband([['#a51931',1],['#f4f5f8',1],['#2d2a4a',2],['#f4f5f8',1],['#a51931',1]]),
+  tr: () => sv('<rect width="24" height="16" fill="#e30a17"/><circle cx="9.4" cy="8" r="4" fill="#fff"/><circle cx="10.9" cy="8" r="3.2" fill="#e30a17"/>'
+      + star(15.2, 8, 2.1, '#fff')),
+  uk: () => bands(['#0057b7','#ffd700']),
+  vi: () => sv('<rect width="24" height="16" fill="#da251d"/>' + star(12, 8, 5, '#ff0')),
+  zh: () => sv('<rect width="24" height="16" fill="#de2910"/>' + star(5, 4.4, 3, '#ffde00')
+      + star(9.8, 1.9, 1.05, '#ffde00') + star(11.6, 4, 1.05, '#ffde00')
+      + star(11.6, 6.6, 1.05, '#ffde00') + star(9.6, 8.6, 1.05, '#ffde00')),
+};
+function flagOf(code){
+  const f = FLAGS[code];
+  return f ? f() : '<span class="auto-ico" style="display:inline-block"></span>';
+}
+/* ═══ Default ═══
+   Esistono solo in main.rb (DEFAULT): Ruby li invia con setDefaults prima
+   di loadSettings. Finché non arrivano DEF è vuoto e il pannello non
+   mostra segni di modifica né ripristina nulla. */
+let DEF = {};
+function setDefaults(d){
+  DEF = d || {};
+  refreshModified();
+}
+
+/* ═══ Indice dei campi ═══ */
+const FIELDS = {};
+SPEC.forEach(t => t.subs.forEach(s => (s.groups || []).forEach(g =>
+  g.fields.forEach(f => { FIELDS[f.k] = f; }))));
+const NUM_KEYS  = Object.keys(FIELDS).filter(k => !FIELDS[k].type);
+const BOOL_KEYS = Object.keys(FIELDS).filter(k => FIELDS[k].type === 'bool');
+const STR_KEYS  = Object.keys(FIELDS).filter(k => FIELDS[k].type === 'color' || FIELDS[k].type === 'choice');
+/* valori di una scelta: prima quelli con nome fisso (lit), poi i tradotti (opts) */
+function choiceVals(f){ return Object.keys(f.lit || {}).concat(f.opts || []); }
+function choiceLabel(f, v){ return f.lit && f.lit[v] !== undefined ? f.lit[v] : T((f.lab || 'o.' + f.k + '.') + v); }
+/* campi dell'Aspetto (quelli che applyLook trasforma in CSS o nell'anteprima) */
+const LOOK_KEYS = Object.keys(FIELDS).filter(k => /^(ui|hud)_/.test(k));
+
+/* ═══ Livelli di dettaglio ═══
+   Ogni contenitore prende il livello minimo dei suoi figli: un gruppo,
+   sotto-tab o tab compare appena almeno uno dei suoi campi è visibile.
+   Nascondere è compito del CSS (body[data-lv] + [data-lv]); i campi
+   nascosti restano nel DOM, quindi conservano e salvano il loro valore. */
+const LEVELS = [1, 2, 3];
+let LEVEL = 1;
+SPEC.forEach(t => {
+  t.subs.forEach(s => {
+    (s.groups || []).forEach(g => {
+      g.fields.forEach(f => { f.lv = f.lv || 1; });
+      g.lv = Math.min(...g.fields.map(f => f.lv));
+    });
+    s.lv = s.groups ? Math.min(...s.groups.map(g => g.lv)) : (s.lv || 1);
+  });
+  t.lv = Math.min(...t.subs.map(s => s.lv));
+});
+function shown(x){ return x.lv <= LEVEL; }
+/* Sotto-tab di una parte che questo pacchetto non ha (il ponte per Claude
+   nel pacchetto per l'Extension Warehouse): livello 99, mai mostrato a
+   nessun livello né trovato dalla ricerca; i campi restano nel DOM. */
+const ABSENT = 99;
+function absent(subId){
+  SPEC.forEach(t => {
+    t.subs.filter(s => s.id === subId).forEach(s => {
+      s.lv = ABSENT;
+      (s.groups || []).forEach(g => { g.lv = ABSENT; g.fields.forEach(f => { f.lv = ABSENT; }); });
+    });
+    t.lv = Math.min(...t.subs.map(s => s.lv));
+  });
+}
+
+function lvswHTML(){
+  return LEVELS.map(n => `<button data-lvl="${n}" title="${escA(T('lvl.h' + n))}"
+      onclick="setLevel(${n}, true)">${esc(T('lvl.' + n))}</button>`).join('');
+}
+
+/* save = true quando la scelta viene dall'utente (va salvata con le impostazioni) */
+function setLevel(n, save){
+  n = LEVELS.includes(+n) ? +n : 1;
+  LEVEL = n;
+  document.body.dataset.lv = n;
+  document.querySelectorAll('#lvsw button').forEach(b =>
+    b.classList.toggle('act', +b.dataset.lvl === n));
+  try { localStorage.setItem('dagadyn_lvl', n); } catch(e){}
+  // il riquadro aperto potrebbe essere sparito: selTab ripiega sul primo visibile
+  if(curTab) selTab(curTab);
+  runSearch(false);
+  markLevelMods();
+  if(save) saveNow();
+}
+
+/* ═══ i18n ═══ */
+let L    = {};      // dizionario corrente (chiave → testo)
+let LANGS = [];     // [{code,name,rtl}] fornito da Ruby
+let CURLANG = 'auto';
+function T(k){ return (L[k] !== undefined) ? L[k] : k; }
+function has(k){ return L[k] !== undefined; }
+
+/* ═══ Costruzione DOM ═══ */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fieldHTML(f){
+  if(f.of) return '';             // l'altra maniglia di un cursore a due: la disegna il minimo
+  const nk = f.name || f.k, hk = 'h.' + nk;
+  const lbl = `<div class="lbl"><span class="name">${esc(T('f.' + nk))}</span>`
+            + (has(hk) ? `<span class="hint">${esc(T(hk))}</span>` : '') + `</div>`;
+  const rst = `<button class="rst" title="${escA(T('ui.reset_one'))}" onclick="resetOne('${f.k}')">↺</button>`;
+  /* Coppia [minimo, massimo] su un cursore solo: casella del minimo, cursore, casella del massimo */
+  if(f.hi){
+    const box = (k, cls) => `<input class="nbox${cls}" id="${k}_v" type="text" inputmode="decimal" autocomplete="off"
+           title="${escA(T('f.' + k))}" oninput="sb(this,'${k}')" onchange="fix('${k}')" onblur="fix('${k}')">`;
+    const rng = k => `<input type="range" id="${k}" min="${f.min}" max="${f.max}" step="${f.step}"
+           title="${escA(T('f.' + k))}" oninput="sync(this)">`;
+    return `<div class="row" data-k="${f.k}" data-lv="${f.lv}">${lbl}
+    ${box(f.k, ' lo')}
+    <div class="span" id="${f.k}_span"><div class="fill"></div>${rng(f.k)}${rng(f.hi)}</div>
+    ${box(f.hi, '')}
+    <span class="unit">${esc(f.u || '')}</span>
+    ${rst}
+  </div>`;
+  }
+  if(f.type === 'bool'){
+    return `<div class="row" data-k="${f.k}" data-lv="${f.lv}">${lbl}
+      <label class="sw"><input type="checkbox" id="${f.k}" onchange="live('${f.k}')"><span class="knob"></span></label>
+      ${rst}
+    </div>`;
+  }
+  /* Colore: selettore + casella esadecimale (id_v), che resta vuota finché
+     Ruby non manda i valori: il selettore da solo direbbe "#000000". */
+  if(f.type === 'color'){
+    return `<div class="row" data-k="${f.k}" data-lv="${f.lv}">${lbl}
+      <input type="color" class="cpick" id="${f.k}" oninput="colorPick('${f.k}')" onchange="saveNow()">
+      <input class="nbox hex" id="${f.k}_v" type="text" maxlength="7" autocomplete="off" spellcheck="false"
+             oninput="hexIn('${f.k}')" onchange="fixHex('${f.k}')" onblur="fixHex('${f.k}')">
+      ${rst}
+    </div>`;
+  }
+  if(f.type === 'choice'){
+    const font = f.k === 'ui_font';
+    const opts = choiceVals(f).map(v => `<option value="${v}"${font ? ` style="font-family:${escA(FONT_STACK[v])}"` : ''}>${esc(choiceLabel(f, v))}</option>`).join('');
+    return `<div class="row" data-k="${f.k}" data-lv="${f.lv}">${lbl}
+      <select class="sel" id="${f.k}" onchange="live('${f.k}')">${opts}</select>
+      ${rst}
+    </div>`;
+  }
+  return `<div class="row" data-k="${f.k}" data-lv="${f.lv}">${lbl}
+    <input type="range" id="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" oninput="sync(this)">
+    <input class="nbox" id="${f.k}_v" type="text" inputmode="decimal" autocomplete="off"
+           oninput="sb(this,'${f.k}')" onchange="fix('${f.k}')" onblur="fix('${f.k}')">
+    <span class="unit">${esc(f.u || '')}</span>
+    ${rst}
+  </div>`;
+}
+/* ═══ Backup (esporta / importa) ═══
+   I file si scelgono con le finestre di sistema, aperte da Ruby. */
+function backupHTML(){
+  return `<div class="note">${esc(T('bk.note'))}</div>
+    <div class="mbtns">
+      <button class="btn btn-sm" onclick="sketchup.export_settings()">⤓ ${esc(T('bk.export'))}</button>
+      <button class="btn btn-sm" onclick="sketchup.import_settings()">⤒ ${esc(T('bk.import'))}</button>
+    </div>`;
+}
+
+function langHTML(){
+  const rows = LANGS.map(l =>
+    `<button data-lang="${l.code}" onclick="setLang('${l.code}')">
+       ${flagOf(l.code)}<span class="nm">${esc(l.name)}</span>
+       <span class="chk" data-chk="${l.code}"></span>
+     </button>`).join('');
+  return `<div class="note">${T('lang.note')}</div>
+    <div class="grp"><h3>${esc(T('grp.lang'))}</h3>
+      <div class="langgrid">
+        <button data-lang="auto" onclick="setLang('auto')">
+          <span class="auto-ico"></span><span class="nm">${esc(T('lang.auto'))}</span>
+          <span class="chk" data-chk="auto"></span>
+        </button>
+        ${rows}
+      </div>
+    </div>`;
+}
+function escA(s){ return esc(s).replace(/"/g, '&quot;'); }
+
+function build(){
+  READY = false;       // il DOM che sta per nascere è vuoto: vedi saveNow
+  document.getElementById('tabs1').innerHTML = SPEC.map(t =>
+    `<button data-t="${t.id}" data-lv="${t.lv}" title="${escA(T('tab.' + t.id))}" onclick="selTab('${t.id}')">${tabLabel('tab.', t.id)}</button>`).join('')
+    + `<div class="srch"><span class="ico">⌕</span>
+         <input id="q" type="text" autocomplete="off" spellcheck="false"
+                placeholder="${escA(T('ui.search'))}" oninput="onSearchInput()" onkeydown="onSearchKey(event)">
+         <span class="cnt" id="qcnt"></span></div>`;
+  document.getElementById('q').value = SEARCH_RAW;   // sopravvive al cambio lingua
+  document.getElementById('content').innerHTML = SPEC.map(t => t.subs.map(s => {
+    let body;
+    if(s.special === 'lang')        body = langHTML();
+    else if(s.special === 'backup') body = backupHTML();
+    else if(s.special === 'log')    body = logHTML();
+    else if(s.special === 'obj')    body = '<div id="objPane"></div>';
+    else if(s.special === 'scene')  body = '<div id="scenePane"></div>';
+    else body = (s.note ? `<div class="note">${esc(T(s.note))}</div>` : '')
+      + (s.groups || []).map(g =>
+      `<div class="grp" data-lv="${g.lv}"><h3>${esc(T('grp.' + g.id))}</h3>`
+      + `${g.fields.map(fieldHTML).join('')}</div>`).join('')
+      + (s.foot === 'look' ? `<div class="mbtns"><button class="btn btn-sm" onclick="resetLook()">${esc(T('look.reset'))}</button></div>` : '');
+    return `<div class="pane" id="pane_${t.id}_${s.id}" data-lv="${s.lv}">${body}</div>`;
+  }).join('')).join('');
+
+  document.getElementById('lvsw').innerHTML = lvswHTML();
+  document.querySelectorAll('#lvsw button').forEach(b =>
+    b.classList.toggle('act', +b.dataset.lvl === LEVEL));
+  document.getElementById('btnHelp').title = T('help.title');
+  document.getElementById('logTitle').textContent   = T('log.title');
+  document.getElementById('logX').title             = T('help.close');
+  document.getElementById('logRefresh').textContent = '↻ ' + T('log.refresh');
+  document.getElementById('logCopy').textContent    = T('log.copy');
+  document.getElementById('logClear').textContent   = T('log.clear');
+  setLogCount(LOG_N);
+  document.getElementById('helpX').title = T('help.close');
+  document.getElementById('helpBody').innerHTML = helpHTML();
+  document.getElementById('btnReset').textContent = T('ui.reset');
+  document.getElementById('btnSave').textContent  = T('ui.save');
+  STATUS = T('ui.autosave'); renderStatus();
+  markLang();
+  // le tendine partono senza scelta: come le caselle vuote, "valore non ancora arrivato"
+  document.querySelectorAll('#content select.sel').forEach(s => { s.selectedIndex = -1; });
+  renderObj();         // il DOM è stato ricostruito (anche al cambio lingua)
+  renderScene();
+  refreshModified();
+  if(SEARCH_Q) runSearch(false);
+}
+
+let curTab = null, curSub = {};
+
+function selTab(id){
+  let tab = SPEC.find(t => t.id === id);
+  if(!tab || !shown(tab)) tab = SPEC.find(shown);     // nascosto dal livello scelto
+  id = curTab = tab.id;
+  document.querySelectorAll('#tabs1 button[data-t]').forEach(b =>
+    b.classList.toggle('act', b.dataset.t === id));
+  document.getElementById('tabs2').innerHTML = tab.subs.map(s =>
+    `<button data-s="${s.id}" data-lv="${s.lv}" title="${escA(T('sub.' + s.id))}" onclick="selSub('${s.id}')">${tabLabel('sub.', s.id)}</button>`).join('');
+  const subs = tab.subs.filter(shown);
+  selSub(curSub[id] && subs.some(s => s.id === curSub[id]) ? curSub[id] : subs[0].id);
+  applySubHits();      // i sotto-tab sono appena stati ricreati
+  try { localStorage.setItem('dagadyn_tab', id); } catch(e){}
+}
+
+/* ═══ Ricerca impostazioni ═══
+   Cerca (senza badare a maiuscole e accenti) in: etichette e descrizioni
+   delle impostazioni, titoli dei gruppi, legenda tasti, tabella materiali,
+   elenco lingue e nomi di tab/sotto-tab. Evidenzia le righe trovate, i tab
+   e sotto-tab che le contengono (col numero di risultati) e il testo nelle
+   etichette. Invio passa al riquadro successivo con risultati, Esc svuota.
+   Si cerca solo fra ciò che il livello di dettaglio scelto mostra. */
+let SEARCH_RAW = '', SEARCH_Q = '', SEARCH_HITS = {}, searchTimer = null;
+
+function norm(s){
+  return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function onSearchInput(){
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => runSearch(true), 120);   // "tempo reale" senza lavoro a ogni tasto
+}
+
+function onSearchKey(e){
+  if(e.key === 'Escape'){
+    e.target.value = ''; clearTimeout(searchTimer); runSearch(false);
+  } else if(e.key === 'Enter'){
+    clearTimeout(searchTimer); runSearch(false); gotoNextHit();
+  }
+}
+
+/* Righe di un riquadro che la ricerca considera, col loro testo. */
+function searchItems(pane){
+  const items = [];
+  pane.querySelectorAll('.row[data-k]').forEach(r => {
+    if(+r.dataset.lv > LEVEL) return;
+    const g = r.closest('.grp');
+    items.push([r, r.textContent + ' ' + (g ? g.querySelector('h3').textContent : '')]);
+  });
+  pane.querySelectorAll('table.keys tr, .langgrid button').forEach(r => items.push([r, r.textContent]));
+  pane.querySelectorAll('#matbody tr').forEach(r => {
+    const vals = [...r.querySelectorAll('input')].map(i => i.value).join(' ');
+    items.push([r, r.textContent + ' ' + vals]);
+  });
+  return items;
+}
+
+/* Evidenzia la parte trovata nell'etichetta (testo originale in data-orig). */
+function markName(row, q){
+  const nm = row.querySelector('.lbl .name');
+  if(!nm) return;
+  const orig = nm.dataset.orig !== undefined ? nm.dataset.orig : (nm.dataset.orig = nm.textContent);
+  const n = norm(orig), i = n.indexOf(q);
+  // se la normalizzazione cambia la lunghezza, gli indici non combaciano: niente <mark>
+  if(i < 0 || n.length !== orig.length){ nm.textContent = orig; return; }
+  nm.innerHTML = esc(orig.slice(0, i)) + '<mark>' + esc(orig.slice(i, i + q.length)) + '</mark>'
+               + esc(orig.slice(i + q.length));
+}
+
+function runSearch(jump){
+  const inp = document.getElementById('q');
+  SEARCH_RAW = inp ? inp.value : '';
+  SEARCH_Q = norm(SEARCH_RAW.trim());
+  SEARCH_HITS = {};
+  document.querySelectorAll('.hit').forEach(el => el.classList.remove('hit'));
+  document.querySelectorAll('.lbl .name[data-orig]').forEach(nm => { nm.textContent = nm.dataset.orig; });
+  const cnt = document.getElementById('qcnt');
+  if(!SEARCH_Q){
+    if(cnt) cnt.textContent = '';
+    if(inp) inp.classList.remove('none');
+    applyTabHits(); applySubHits();
+    return;
+  }
+  let total = 0;
+  SPEC.forEach(t => t.subs.forEach(s => {
+    const pane = document.getElementById('pane_' + t.id + '_' + s.id);
+    if(!pane || !shown(s)) return;
+    let n = 0;
+    searchItems(pane).forEach(([el, txt]) => {
+      if(norm(txt).includes(SEARCH_Q)){ el.classList.add('hit'); markName(el, SEARCH_Q); n++; }
+    });
+    // anche il nome del sotto-tab conta come risultato
+    SEARCH_HITS[t.id + '/' + s.id] = { n, label: norm(T('sub.' + s.id)).includes(SEARCH_Q) };
+    total += n;
+  }));
+  if(cnt) cnt.textContent = total ? String(total) : T('ui.search_none');
+  if(inp) inp.classList.toggle('none', total === 0);
+  applyTabHits(); applySubHits();
+
+  if(jump && total){
+    // il riquadro aperto non ha risultati: apri il primo che ne ha
+    const cur = SEARCH_HITS[curTab + '/' + curSub[curTab]];
+    if(!cur || !cur.n) gotoNextHit();
+    else scrollToFirstHit();
+  }
+}
+
+function paneHits(tid, sid){
+  const h = SEARCH_HITS[tid + '/' + sid];
+  return h ? h.n : 0;
+}
+
+function applyTabHits(){
+  document.querySelectorAll('#tabs1 button[data-t]').forEach(b => {
+    const t = SPEC.find(x => x.id === b.dataset.t);
+    const n = SEARCH_Q ? t.subs.reduce((a, s) => a + paneHits(t.id, s.id), 0) : 0;
+    const lbl = SEARCH_Q && (norm(b.textContent.replace(/\d+$/, '')).includes(SEARCH_Q) ||
+                t.subs.some(s => shown(s) && (SEARCH_HITS[t.id + '/' + s.id] || {}).label));
+    b.classList.toggle('hit', !!(n || lbl));
+    if(n) b.dataset.n = n; else delete b.dataset.n;
+  });
+}
+
+function applySubHits(){
+  document.querySelectorAll('#tabs2 button').forEach(b => {
+    const h = SEARCH_Q ? SEARCH_HITS[curTab + '/' + b.dataset.s] : null;
+    b.classList.toggle('hit', !!(h && (h.n || h.label)));
+    if(h && h.n) b.dataset.n = h.n; else delete b.dataset.n;
+  });
+}
+
+function scrollToFirstHit(){
+  const p = document.getElementById('pane_' + curTab + '_' + curSub[curTab]);
+  const el = p && p.querySelector('.hit');
+  if(el) el.scrollIntoView({ block: 'center' });
+}
+
+/* Passa al riquadro successivo (in ordine di tab) che ha risultati. */
+function gotoNextHit(){
+  const order = [];
+  SPEC.forEach(t => t.subs.forEach(s => order.push([t.id, s.id])));
+  const start = order.findIndex(([t, s]) => t === curTab && s === curSub[curTab]);
+  for(let k = 1; k <= order.length; k++){
+    const [t, s] = order[(start + k) % order.length];
+    if(paneHits(t, s)){
+      curSub[t] = s;
+      if(t !== curTab) selTab(t); else { selSub(s); applySubHits(); }
+      scrollToFirstHit();
+      return;
+    }
+  }
+}
+
+function selSub(id){
+  curSub[curTab] = id;
+  document.querySelectorAll('#tabs2 button').forEach(b =>
+    b.classList.toggle('act', b.dataset.s === id));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('act'));
+  const p = document.getElementById('pane_' + curTab + '_' + id);
+  if(p) p.classList.add('act');
+  try { localStorage.setItem('dagadyn_sub_' + curTab, id); } catch(e){}
+}
+/* ═══ Registro errori ═══
+   Il testo arriva da Ruby (read_log → showLog). Il pulsante ⚠ nella barra
+   in alto compare solo se il registro contiene voci. */
+let LOG_N = 0, LOG_TEXT = '';
+function logHTML(){
+  return `<div class="note">${esc(T('log.note'))}</div>
+    <div class="mbtns"><button class="btn btn-sm" onclick="openLog()">${esc(T('log.open'))}</button></div>`;
+}
+function countLog(txt){ return (txt.match(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[/gm) || []).length; }
+function setLogCount(n){
+  LOG_N = n | 0;
+  const b = document.getElementById('btnLog');
+  if(!b) return;
+  b.hidden = !LOG_N;
+  b.textContent = '⚠ ' + LOG_N;
+  b.title = T('log.badge');
+}
+function openLog(){
+  document.getElementById('logm').classList.add('open');
+  const pre = document.getElementById('logPre');
+  pre.className = 'logpre empty'; pre.textContent = '…';
+  document.getElementById('logX').focus();
+  sketchup.read_log();
+}
+function closeLog(){ document.getElementById('logm').classList.remove('open'); }
+/* Chiamata da Ruby: {path, text}. Data e ora di ogni voce evidenziate. */
+function showLog(d){
+  LOG_TEXT = (d && d.text) || '';
+  document.getElementById('logPath').textContent = (d && d.path) || '';
+  const pre = document.getElementById('logPre');
+  if(!LOG_TEXT.trim()){
+    pre.className = 'logpre empty'; pre.textContent = T('log.empty');
+  } else {
+    pre.className = 'logpre';
+    pre.innerHTML = esc(LOG_TEXT).replace(/^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)/gm, '<span class="ts">$1</span>');
+    pre.scrollTop = pre.scrollHeight;       // le voci più recenti sono in fondo
+  }
+  setLogCount(countLog(LOG_TEXT));
+}
+function copyLog(){
+  const done = () => flashStatus(T('log.copied'));
+  const fallback = () => {
+    const r = document.createRange(), sel = window.getSelection();
+    r.selectNodeContents(document.getElementById('logPre'));
+    sel.removeAllRanges(); sel.addRange(r);
+    try { document.execCommand('copy'); done(); } catch(e){}
+    sel.removeAllRanges();
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(LOG_TEXT).then(done, fallback);
+  else fallback();
+}
+/* ═══ Lingua ═══ */
+function markLang(){
+  document.querySelectorAll('[data-lang]').forEach(b =>
+    b.classList.toggle('act', b.dataset.lang === CURLANG));
+  document.querySelectorAll('[data-chk]').forEach(s =>
+    s.textContent = (s.dataset.chk === CURLANG) ? '✓' : '');
+}
+
+function setLang(code){
+  CURLANG = code;
+  markLang();
+  sketchup.set_language(code);      // Ruby ricarica il dizionario e richiama applyLang
+}
+
+/* Chiamata da Ruby: dict = dizionario, langs = elenco lingue,
+   cur = codice selezionato ('auto' o un codice), rtl = scrittura destra→sinistra */
+function applyLang(payload){
+  L       = payload.strings || {};
+  LANGS   = payload.languages || LANGS;
+  CURLANG = payload.current || 'auto';
+  document.documentElement.lang = payload.resolved || 'en';
+  document.body.classList.toggle('rtl', !!payload.rtl);
+  if(payload.presets) PRESETS = payload.presets;
+  const keep = { tab: curTab, sub: Object.assign({}, curSub) };
+  build();
+  curSub = keep.sub;
+  selTab(keep.tab && SPEC.some(t => t.id === keep.tab) ? keep.tab : SPEC[0].id);
+  setTransport({});
+}
+/* ═══ Lettura / scrittura valori ═══ */
+let saveTimer = null;
+
+function decimals(step){
+  const s = String(step), i = s.indexOf('.');
+  return i < 0 ? 0 : s.length - i - 1;
+}
+
+/* Le caselle sono input di testo: con la locale italiana un <input type=number>
+   mostra la virgola e rilegge stringa vuota. Qui accettiamo sia '.' che ','. */
+function num(v){
+  const hm = /^\s*(\d{1,2})[:h](\d{2})\s*$/.exec(String(v));   // ore: 14:30 o 14h30
+  if(hm) return +hm[1] + hm[2] / 60;
+  const x = parseFloat(String(v).replace(',', '.').trim());
+  return isNaN(x) ? null : x;
+}
+
+function clampF(k, v){
+  const f = FIELDS[k];
+  if(!f) return v;
+  return Math.min(f.max, Math.max(f.min, v));
+}
+
+function fmt(k, v){
+  const f = FIELDS[k];
+  if(f && f.fmt === 'hm'){        // ore come HH:MM
+    const m = Math.round(parseFloat(v) * 60);
+    return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  }
+  return f && f.int ? String(Math.round(v)) : parseFloat(v).toFixed(decimals(f ? f.step : 0.01));
+}
+
+function sync(sl){            // slider → casella
+  const el = document.getElementById(sl.id + '_v');
+  if(el) el.value = fmt(sl.id, sl.value);
+  markMod(sl.id);
+  pairFix(sl.id);
+  schedule();
+}
+
+/* Coppie [minimo, massimo]: portandone uno oltre l'altro, l'altro lo segue
+   (un lancio minimo più forte del massimo farebbe lanciare più piano
+   caricando di più). Si applica ai valori confermati: slider, fine
+   digitazione, ripristino; mentre si scrive "1" per arrivare a "12" no. */
+const PAIRS = [];   // coppie [minimo, massimo] (in DagaDyn per ora nessuna)
+function numVal(k){ const el = document.getElementById(k + '_v'); return el ? num(el.value) : null; }
+function setNum(k, v){
+  v = clampF(k, v);
+  const sl = document.getElementById(k), el = document.getElementById(k + '_v');
+  if(sl) sl.value = v;
+  if(el) el.value = fmt(k, v);
+  markMod(k);
+  return v;
+}
+function pairFix(k){
+  PAIRS.forEach(([lo, hi]) => {
+    if(k !== lo && k !== hi) return;
+    const a = numVal(lo), b = numVal(hi);
+    if(a === null || b === null || a <= b) return;
+    // l'altro segue; se il suo intervallo non ci arriva, torna indietro quello mosso
+    if(k === lo){ if(setNum(hi, a) < a) setNum(lo, numVal(hi)); }
+    else        { if(setNum(lo, b) > b) setNum(hi, numVal(lo)); }
+  });
+}
+
+function sb(inp, key){        // casella → slider
+  const v = num(inp.value);
+  if(v === null) return;      // digitazione in corso ("", "-", "0,"): non toccare nulla
+  const sl = document.getElementById(key);
+  if(sl) sl.value = clampF(key, v);
+  markMod(key);
+  schedule();
+}
+
+/* A fine digitazione riallinea la casella al valore effettivo (clamp + formato). */
+function fix(key){
+  const el = document.getElementById(key + '_v');
+  const sl = document.getElementById(key);
+  if(!el) return;
+  let v = num(el.value);
+  if(v === null) v = DEF[key] !== undefined ? DEF[key] : +(sl ? sl.value : 0);
+  v = clampF(key, v);
+  if(FIELDS[key].int) v = Math.round(v);
+  el.value = fmt(key, v);
+  if(sl) sl.value = v;
+  markMod(key);
+  pairFix(key);
+  saveNow();
+}
+
+function live(k){ markMod(k); saveNow(); }
+
+/* ═══ Valori modificati ═══
+   Pallino e ↺ sulle righe diverse dal predefinito; sullo switch dei livelli
+   un pallino segnala modifiche nascoste dal livello attuale. */
+function valueMod(k){
+  if(DEF[k] === undefined) return false;
+  if(STR_KEYS.includes(k)){
+    const v = strVal(k);
+    return v !== undefined && v !== DEF[k];
+  }
+  if(FIELDS[k].type === 'bool'){
+    const el = document.getElementById(k);
+    return !!el && el.checked !== !!DEF[k];
+  }
+  const el = document.getElementById(k + '_v');
+  const v = el ? num(el.value) : null;
+  return v !== null && fmt(k, clampF(k, v)) !== fmt(k, DEF[k]);
+}
+function markRow(k){
+  if(FIELDS[k] && FIELDS[k].of) k = FIELDS[k].of;     // la riga della coppia è del minimo
+  const hi = FIELDS[k] && FIELDS[k].hi;
+  const r = document.querySelector(`.row[data-k="${k}"]`);
+  if(r) r.classList.toggle('mod', valueMod(k) || (!!hi && valueMod(hi)));
+  if(hi) spanFill(k);
+}
+/* Il tratto colorato fra le due maniglie (il centro di una maniglia da 18 px
+   va da 9 px dal bordo a 9 px dall'altro) */
+function spanFill(k){
+  const f = FIELDS[k], box = document.getElementById(k + '_span');
+  const a = document.getElementById(k), b = document.getElementById(f.hi);
+  if(!box || !a || !b) return;
+  const p = v => (Math.min(f.max, Math.max(f.min, +v)) - f.min) / (f.max - f.min);
+  const x0 = Math.min(p(a.value), p(b.value)), x1 = Math.max(p(a.value), p(b.value));
+  const fill = box.querySelector('.fill');
+  fill.style.left = `calc(9px + (100% - 18px) * ${x0})`;
+  fill.style.width = `calc((100% - 18px) * ${x1 - x0})`;
+}
+function markMod(k){ markRow(k); markUnit(k); markLevelMods(); markDeps(); if(LOOK_KEYS.includes(k)) applyLook(); }
+function refreshModified(){ Object.keys(FIELDS).forEach(k => { markRow(k); markUnit(k); }); markLevelMods(); markDeps(); applyLook(); }
+/* Unità che dipende dal valore: il nome del mese accanto al numero */
+function markUnit(k){
+  const f = FIELDS[k];
+  if(!f || f.uname !== 'month') return;
+  const v = numVal(k), u = document.querySelector(`.row[data-k="${k}"] .unit`);
+  if(u) u.textContent = v === null ? '' : monthName(Math.min(12, Math.max(1, Math.round(v))));
+}
+// Campi che valgono solo con un interruttore acceso: riga attenuata se
+// l'interruttore, o quello da cui dipende a sua volta, è spento.
+function depOn(k){
+  const f = FIELDS[k];
+  if(!f || !f.dep) return true;
+  // acceso = interruttore acceso o scelta diversa da 'none'; finché i valori
+  // non sono arrivati (undefined) la riga resta normale
+  return [].concat(f.dep).every(d => {
+    const neg = d[0] === '!', k = neg ? d.slice(1) : d, v = lookVal(k);
+    if(v === undefined) return true;
+    const on = v === true || (typeof v === 'string' && v !== 'none');
+    return neg ? !on : on && depOn(k);
+  });
+}
+function markDeps(){
+  if(!READY) return;   // prima di loadSettings le caselle sono tutte spente
+  Object.values(FIELDS).filter(f => f.dep).forEach(f => {
+    const row = document.querySelector(`.row[data-k="${f.k}"]`);
+    if(row) row.classList.toggle('off', !depOn(f.k));
+  });
+}
+function markLevelMods(){
+  const lvs = Object.keys(FIELDS).filter(valueMod).map(k => FIELDS[k].lv);
+  document.querySelectorAll('#lvsw button').forEach(b => {
+    const n = +b.dataset.lvl;
+    const hid = n > LEVEL && lvs.some(x => x > LEVEL && x <= n);
+    b.classList.toggle('mod', hid);
+    b.title = T('lvl.h' + n) + (hid ? '\n' + T('lvl.hidden_mod') : '');
+  });
+}
+function resetOne(k){
+  if(DEF[k] === undefined) return;
+  const hi = FIELDS[k] && FIELDS[k].hi;
+  loadSettings(hi && DEF[hi] !== undefined ? { [k]: DEF[k], [hi]: DEF[hi] } : { [k]: DEF[k] });
+  pairFix(k);
+  saveNow();
+}
+
+/* ═══ Colori e scelte ═══
+   Il colore vale quanto scritto nella casella esadecimale; mentre si
+   digita un valore non valido vale l'ultimo buono, rimasto nel selettore. */
+function normHex(s){
+  s = String(s || '').trim().toLowerCase();
+  if(s[0] !== '#') s = '#' + s;
+  if(/^#[0-9a-f]{3}$/.test(s)) s = '#' + s.slice(1).split('').map(c => c + c).join('');
+  return /^#[0-9a-f]{6}$/.test(s) ? s : null;
+}
+function strVal(k){
+  const f = FIELDS[k];
+  if(f.type === 'color'){
+    const el = document.getElementById(k + '_v'), pk = document.getElementById(k);
+    if(!el) return undefined;
+    return normHex(el.value) || (READY && pk ? pk.value : undefined);
+  }
+  const el = document.getElementById(k);
+  return el && choiceVals(f).includes(el.value) ? el.value : undefined;
+}
+function setStr(k, v){
+  const el = document.getElementById(k);
+  if(!el) return;
+  if(FIELDS[k].type === 'color'){
+    const n = normHex(v);
+    if(!n) return;
+    const box = document.getElementById(k + '_v');
+    el.value = n; box.value = n; box.classList.remove('bad');
+  } else {
+    el.value = v;
+    if(el.value !== v) el.selectedIndex = -1;
+  }
+}
+function colorPick(k){
+  document.getElementById(k + '_v').value = document.getElementById(k).value;
+  document.getElementById(k + '_v').classList.remove('bad');
+  markMod(k); schedule();
+}
+function hexIn(k){
+  const box = document.getElementById(k + '_v'), n = normHex(box.value);
+  box.classList.toggle('bad', !n);
+  if(!n) return;                          // digitazione in corso
+  document.getElementById(k).value = n;
+  markMod(k); schedule();
+}
+function fixHex(k){
+  const box = document.getElementById(k + '_v'), pk = document.getElementById(k);
+  const n = normHex(box.value) || pk.value;
+  box.value = n; pk.value = n; box.classList.remove('bad');
+  markMod(k); saveNow();
+}
+/* "Ripristina aspetto": solo i campi del sotto-tab Aspetto */
+function resetLook(){
+  const d = {};
+  LOOK_KEYS.forEach(k => { if(DEF[k] !== undefined) d[k] = DEF[k]; });
+  loadSettings(d); saveNow();
+}
+/* ═══ Aspetto ═══
+   Trasforma le impostazioni ui_* in variabili CSS e classi del <body>, e
+   hud_* nell'anteprima del mirino. I neutri stanno fra sfondo e testo del
+   tema (NEUTRALS); accento, evidenziazione e colore di stop si scuriscono
+   o schiariscono per restare leggibili su sfondi chiari. Prima che Ruby
+   mandi i valori si usano quelli dell'ultima volta (localStorage): così
+   il pannello non si apre per un istante col tema predefinito. */
+let LOOK_CACHE = {};
+function rgb(h){ const n = normHex(h); return n ? [1, 3, 5].map(i => parseInt(n.slice(i, i + 2), 16)) : null; }
+function hex(c){ return '#' + c.map(x => Math.round(Math.min(255, Math.max(0, x))).toString(16).padStart(2, '0')).join(''); }
+function mix(a, b, t){ return a.map((x, i) => x + (b[i] - x) * t); }
+function lum(c){ return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; }
+function rgba(c, a){ return `rgba(${c.map(Math.round).join(',')},${a})`; }
+const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+
+function lookVal(k){
+  const f = FIELDS[k];
+  let v;
+  if(STR_KEYS.includes(k)) v = strVal(k);
+  else if(f.type === 'bool'){
+    const el = document.getElementById(k);
+    v = READY && el ? el.checked : undefined;   // prima di loadSettings le caselle sono tutte spente
+  } else {
+    const el = document.getElementById(k + '_v'), x = el ? num(el.value) : null;
+    v = x === null ? undefined : clampF(k, x);
+  }
+  if(v === undefined) v = LOOK_CACHE[k];
+  if(v === undefined) v = DEF[k];
+  return v;
+}
+function systemLight(){
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches; } catch(e){ return false; }
+}
+
+function applyLook(){
+  const v = {};
+  LOOK_KEYS.forEach(k => { v[k] = lookVal(k); });
+  if(LOOK_KEYS.some(k => v[k] === undefined)) return;   // niente valori: resta il CSS di base
+  LOOK_CACHE = v;
+  try { localStorage.setItem('dagadyn_look', JSON.stringify(v)); } catch(e){}
+  const r = document.documentElement.style, b = document.body;
+  const th = THEMES[v.ui_theme === 'auto' ? (systemLight() ? 'light' : 'dark') : v.ui_theme] || THEMES.dark;
+  const custom = v.ui_custom_colors && rgb(v.ui_bg) && rgb(v.ui_text);
+  const B = rgb(custom ? v.ui_bg : th.bg), F = rgb(custom ? v.ui_text : th.fg);
+  const light = lum(B) > lum(F);
+  const set = (n, c) => r.setProperty('--' + n, typeof c === 'string' ? c : hex(c));
+  for(const n in NEUTRALS) set(n, mix(B, F, th.boost && BOOST[n] ? BOOST[n] : NEUTRALS[n]));
+  set('edge', rgba(F, .14));
+  r.setProperty('color-scheme', light ? 'light' : 'dark');   // tendine e selettori di sistema
+
+  const A = rgb(v.ui_accent), H = rgb(v.ui_highlight), D = rgb(v.ui_danger);
+  set('acc', A); set('acc-hi', mix(A, light ? BLACK : WHITE, .12));
+  set('acc-ink', lum(A) > .45 ? '#0d0d0d' : '#ffffff');
+  set('acc-bg', mix(B, A, light ? .16 : .2)); set('acc-deep', mix(A, BLACK, .4));
+  set('acc-tx', light ? mix(A, F, .35) : A); set('acc-tx2', mix(A, B, .2));
+  set('knob', lum(A) > .8 ? '#0d0d0d' : '#ffffff');
+  set('hl', H); set('hl-tx', light ? mix(H, F, .45) : H);
+  set('hl-ink', lum(H) > .45 ? '#111111' : '#ffffff');
+  set('hl-soft', rgba(H, light ? .2 : .09)); set('hl-line', rgba(H, .45));
+  set('hl-bg', mix(B, H, .1)); set('hl-bg2', mix(B, H, .16)); set('hl-edge', mix(B, H, .38));
+  set('dg', D); set('dg-hi', mix(D, WHITE, .1)); set('dg-ink', lum(D) > .5 ? '#111111' : '#ffffff');
+  set('dg-bg', mix(B, D, .18)); set('dg-tx', light ? mix(D, F, .2) : mix(D, WHITE, .4)); set('dg-edge', mix(B, D, .6));
+
+  set('font', FONT_STACK[v.ui_font] || FONT_STACK.segoe);
+  set('fs', v.ui_font_size + 'px'); set('lh', String(v.ui_line_height));
+  set('rk', String(v.ui_radius / 6)); set('sp', String(v.ui_spacing));
+  set('lblw', v.ui_label_width + 'px'); set('sbw', v.ui_scrollbar + 'px');
+  b.classList.toggle('noanim', !v.ui_animations);
+  b.classList.toggle('nohints', !v.ui_hints);
+  ['text', 'both', 'icons'].forEach(m => b.classList.toggle('ti-' + m, v.ui_tab_icons === m));
+  const logo = document.getElementById('logo');
+  if(logo) logo.textContent = LOGOS[v.ui_logo] || '';
+}
+/* ═══ Barra in basso ═══
+   Priorità: messaggio lampo (importato, tasto riservato…) → spiegazione
+   dell'impostazione sotto il mouse → stato normale ("si applicano subito"). */
+let STATUS = '', INFO_K = null, FLASH = null, flashTimer = null, statusTimer = null;
+function renderStatus(){
+  const el = document.getElementById('status');
+  if(!el) return;
+  el.classList.toggle('flash', !!FLASH);
+  el.classList.toggle('info', !FLASH && !!INFO_K);
+  if(FLASH) el.textContent = FLASH;
+  else if(INFO_K) el.innerHTML = infoHTML(INFO_K);
+  else el.textContent = STATUS;
+}
+function flashStatus(t){
+  FLASH = t; renderStatus();
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { FLASH = null; renderStatus(); }, 1800);
+}
+function setInfo(k){
+  if(INFO_K === k) return;
+  INFO_K = k; renderStatus();
+}
+/* Spiegazione lunga (d.*) se c'è, altrimenti la descrizione breve (h.*);
+   poi intervallo e valore predefinito. */
+function infoHTML(k){
+  const f = FIELDS[k], nk = f.name || k;
+  const txt = has('d.' + nk) ? T('d.' + nk) : (has('h.' + nk) ? T('h.' + nk) : '');
+  const u = f.u && !f.u.includes('–') ? ' ' + f.u : '';     // "0–1" è già un intervallo
+  const meta = [];
+  if(!f.type) meta.push(`${T('ui.range')}: ${fmt(k, f.min)} – ${fmt(k, f.max)}${u}`);
+  if(DEF[k] !== undefined)
+    meta.push(`${T('ui.default')}: ` + (f.type === 'bool' ? T(DEF[k] ? 'ui.on' : 'ui.off')
+      : f.type === 'choice' ? choiceLabel(f, DEF[k]) : f.type === 'color' ? DEF[k]
+      : fmt(k, DEF[k]) + (f.hi && DEF[f.hi] !== undefined ? ' – ' + fmt(f.hi, DEF[f.hi]) : '') + u));
+  return `<b>${esc(T('f.' + nk))}</b>` + (txt ? ` — ${esc(txt)}` : '')
+       + (meta.length ? `<span class="meta">${esc(meta.join(' · '))}</span>` : '');
+}
+function schedule(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 300);
+}
+
+function collect(){
+  const out = {};
+  for(const k of NUM_KEYS){
+    const el = document.getElementById(k + '_v') || document.getElementById(k);
+    if(!el) continue;
+    let v = num(el.value);
+    if(v === null) v = DEF[k];
+    if(v === undefined) continue;     // casella vuota e default non ancora arrivati
+    v = clampF(k, v);
+    out[k] = FIELDS[k].int ? Math.round(v) : v;
+  }
+  for(const k of BOOL_KEYS){
+    const el = document.getElementById(k);
+    if(el) out[k] = el.checked;
+  }
+  for(const k of STR_KEYS){
+    const v = strVal(k) !== undefined ? strVal(k) : DEF[k];
+    if(v !== undefined) out[k] = v;
+  }
+  out.panel_level = LEVEL;
+  return out;
+}
+
+/* READY: il modulo contiene i valori veri. build() lo azzera (caselle vuote,
+   interruttori spenti) finché Ruby non manda loadSettings: salvare prima
+   manderebbe tutti gli interruttori a false, sovrascrivendo le impostazioni. */
+let READY = false;
+
+function saveNow(){
+  clearTimeout(saveTimer);
+  if(!READY) return;
+  sketchup.save_settings(JSON.stringify(collect()));
+  STATUS = T('ui.saved'); renderStatus();
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { STATUS = T('ui.autosave'); renderStatus(); }, 1200);
+}
+
+function loadSettings(s){
+  for(const k of NUM_KEYS){
+    if(s[k] === undefined) continue;
+    const sl = document.getElementById(k), el = document.getElementById(k + '_v');
+    if(sl) sl.value = s[k];
+    if(el) el.value = fmt(k, s[k]);
+  }
+  for(const k of BOOL_KEYS){
+    const el = document.getElementById(k);
+    if(el && s[k] !== undefined) el.checked = !!s[k];
+  }
+  for(const k of STR_KEYS){
+    if(s[k] !== undefined) setStr(k, s[k]);
+  }
+  if(s.panel_level !== undefined && +s.panel_level !== LEVEL) setLevel(s.panel_level, false);
+  refreshModified();
+  READY = true;
+  markDeps();
+}
+
+/* Ripristina i valori delle impostazioni; lingua e livello restano. */
+function resetAll(){
+  const d = {};
+  Object.keys(FIELDS).forEach(k => { if(DEF[k] !== undefined) d[k] = DEF[k]; });
+  loadSettings(d); saveNow();
+}
+
+window.onload = () => {
+  try { curTab = localStorage.getItem('dagadyn_tab'); } catch(e){}
+  // livello dell'ultima sessione, per non far "saltare" il pannello prima che
+  // Ruby mandi quello salvato nelle impostazioni
+  try { const lv = +localStorage.getItem('dagadyn_lvl'); if(LEVELS.includes(lv)) LEVEL = lv; } catch(e){}
+  document.body.dataset.lv = LEVEL;
+  try { LOOK_CACHE = JSON.parse(localStorage.getItem('dagadyn_look')) || {}; } catch(e){}
+  SPEC.forEach(x => {
+    try {
+      const s = localStorage.getItem('dagadyn_sub_' + x.id);
+      if(x.subs.some(y => y.id === s)) curSub[x.id] = s;
+    } catch(e){}
+  });
+  build();
+  selTab(curTab && SPEC.some(t => t.id === curTab) ? curTab : SPEC[0].id);
+  setTransport({});
+  cvInit();
+  // spiegazioni nella barra in basso: #content resta, cambia solo il suo contenuto
+  const c = document.getElementById('content');
+  const rowOf = e => { const r = e.target.closest && e.target.closest('.row[data-k]'); return r ? r.dataset.k : null; };
+  c.addEventListener('mouseover', e => setInfo(rowOf(e)));
+  c.addEventListener('mouseleave', () => setInfo(null));
+  c.addEventListener('focusin', e => { const k = rowOf(e); if(k) setInfo(k); });
+  // tema automatico: segue il cambio chiaro/scuro di Windows
+  try { window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyLook); } catch(e){}
+  // chiudendo il pannello con modifiche in sospeso: si salvano subito
+  window.addEventListener('beforeunload', () => { if(DIRTY) saveTracks(); });
+  sketchup.request_settings();   // Ruby risponde con applyLang + loadSettings + setTransport + setSelection
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU DEL DESTRO — mai quello del browser (in inglese, con Ispeziona
+   e DevTools); nelle caselle di testo uno nostro, tradotto, con Taglia,
+   Copia e Incolla. Gli appunti li legge Ruby (panel_paste → incolla):
+   la pagina non può. Come nel pannello della sfera (keyedit.html).
+═══════════════════════════════════════════════════════════════ */
+let menuDi = null;                                  // { inp, a, b }: casella e selezione all'apertura
+document.addEventListener('contextmenu', ev => {
+  ev.preventDefault();
+  const t = ev.target;
+  if(t.tagName === 'INPUT' && (t.type === 'text' || t.type === 'search') && !t.disabled && !t.readOnly) apriMenu(t, ev.clientX, ev.clientY);
+});
+function apriMenu(inp, x, y){
+  inp.focus();
+  const a = inp.selectionStart, b = inp.selectionEnd;
+  menuDi = { inp: inp, a: a, b: b };
+  const $m = id => document.getElementById(id);
+  $m('t-cut').textContent = T('ke.cut'); $m('t-copy').textContent = T('ke.copy'); $m('t-paste').textContent = T('ke.paste');
+  $m('c-cut').disabled = $m('c-copy').disabled = a === b;
+  const m = $m('menuctx');
+  m.classList.add('aperto');
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 4)) + 'px';
+  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
+}
+function chiudiMenu(){ document.getElementById('menuctx').classList.remove('aperto'); }
+document.addEventListener('pointerdown', ev => { if(!(ev.target.closest && ev.target.closest('#menuctx'))) chiudiMenu(); }, true);
+document.addEventListener('keydown', ev => { if(ev.key === 'Escape') chiudiMenu(); });
+window.addEventListener('blur', chiudiMenu);
+// testo cambiato da qui: la casella reagisce come quando si scrive
+const cambiata = inp => inp.dispatchEvent(new Event('input', { bubbles: true }));
+document.getElementById('menuctx').addEventListener('click', ev => {
+  const b = ev.target.closest('button');
+  if(!b || b.disabled || !menuDi) return;
+  const { inp, a, b: z } = menuDi;
+  chiudiMenu();
+  inp.focus();
+  inp.setSelectionRange(a, z);
+  if(b.dataset.a === 'paste'){ sketchup.panel_paste(); return; }
+  const testo = inp.value.slice(a, z);
+  let fatto = false;
+  try { fatto = document.execCommand(b.dataset.a); } catch(e){}   // copy / cut del browser
+  if(!fatto){                                                       // non concesso: a mano
+    if(navigator.clipboard) navigator.clipboard.writeText(testo).catch(() => {});
+    if(b.dataset.a === 'cut'){ inp.setRangeText('', a, z, 'end'); cambiata(inp); }
+  }
+});
+// Ruby risponde a panel_paste con il testo degli appunti
+function incolla(testo){
+  if(!menuDi) return;
+  const { inp, a, b } = menuDi;
+  inp.focus();
+  inp.setRangeText(String(testo).replace(/[\r\n]+/g, ' ').trim(), a, b, 'end');
+  cambiata(inp);
+  menuDi = null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CURVE — lo stesso algoritmo di lib/curves.rb (PCHIP con punti ad
+   angolo). Ciò che si disegna qui è ciò che il motore applica: se si
+   cambia una delle due copie va cambiata anche l'altra.
+   tools/test_curves.rb confronta le due fra i marcatori CURVE-BEGIN/END.
+═══════════════════════════════════════════════════════════════ */
+/* CURVE-BEGIN */
+const CURVE_MAX_PTS = 32, CURVE_MIN_DX = 0.005, CURVE_Y_MIN = -1, CURVE_Y_MAX = 2;
+
+function curveSanitize(pts){
+  if(!Array.isArray(pts)) pts = [];
+  const inner = [];
+  pts.forEach(p => {
+    if(!Array.isArray(p) || p.length < 2) return;
+    let x = p[0], y = p[1];
+    if(typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) return;
+    y = Math.min(CURVE_Y_MAX, Math.max(CURVE_Y_MIN, y));
+    if(x <= CURVE_MIN_DX || x >= 1 - CURVE_MIN_DX) return;
+    inner.push(p[2] === 1 ? [x, y, 1] : [x, y]);
+  });
+  inner.sort((a, b) => a[0] - b[0]);
+  let out = [[0, 0]];
+  inner.forEach(p => { if(p[0] - out[out.length - 1][0] >= CURVE_MIN_DX) out.push(p); });
+  while(out.length > 1 && 1 - out[out.length - 1][0] < CURVE_MIN_DX) out.pop();
+  out.push([1, 1]);
+  if(out.length > CURVE_MAX_PTS) out = out.slice(0, CURVE_MAX_PTS - 1).concat([out[out.length - 1]]);
+  return out;
+}
+
+function pchipEnd(h0, h1, d0, d1){
+  const m = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+  if(Math.sign(m) !== Math.sign(d0)) return 0;
+  if(Math.sign(d0) !== Math.sign(d1) && Math.abs(m) > Math.abs(3 * d0)) return 3 * d0;
+  return m;
+}
+
+function curveTangents(pts){
+  const n = pts.length, h = [], d = [], m = new Array(n).fill(0);
+  for(let k = 0; k < n - 1; k++){
+    h.push(pts[k + 1][0] - pts[k][0]);
+    d.push((pts[k + 1][1] - pts[k][1]) / h[k]);
+  }
+  if(n === 2){ m[0] = m[1] = d[0]; }
+  else {
+    for(let k = 1; k < n - 1; k++){
+      const a = d[k - 1], b = d[k];
+      if(a * b <= 0) m[k] = 0;
+      else {
+        const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1];
+        m[k] = (w1 + w2) / (w1 / a + w2 / b);
+      }
+    }
+    m[0] = pchipEnd(h[0], h[1], d[0], d[1]);
+    m[n - 1] = pchipEnd(h[n - 2], h[n - 3], d[n - 2], d[n - 3]);
+  }
+  const mi = m.slice(), mo = m.slice();
+  for(let k = 1; k < n - 1; k++){
+    if(pts[k][2] !== 1) continue;
+    mi[k] = d[k - 1]; mo[k] = d[k];
+  }
+  return [mi, mo];
+}
+
+function curvePrepare(pts){
+  pts = curveSanitize(pts);
+  const [mi, mo] = curveTangents(pts);
+  return {pts, mi, mo};
+}
+
+function curveEval(c, u){
+  const pts = c.pts;
+  if(u <= 0) return pts[0][1];
+  if(u >= 1) return pts[pts.length - 1][1];
+  let k = 0;
+  while(k < pts.length - 2 && u > pts[k + 1][0]) k++;
+  const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
+  const hh = x1 - x0, t = (u - x0) / hh, t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * hh * c.mo[k] +
+         (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * hh * c.mi[k + 1];
+}
+/* CURVE-END */
+
+/* Tracciato SVG di una curva in un riquadro w×h (y da lo a hi) */
+function curvePath(pts, w, h, lo, hi, pad){
+  const c = curvePrepare(pts), N = 64, p = pad || 0;
+  let s = '';
+  for(let i = 0; i <= N; i++){
+    const u = i / N, y = curveEval(c, u);
+    const px = p + u * (w - 2 * p), py = p + (hi - y) / (hi - lo) * (h - 2 * p);
+    s += (i ? 'L' : 'M') + px.toFixed(1) + ' ' + py.toFixed(1);
+  }
+  return s;
+}
+function curveBounds(pts){
+  let lo = 0, hi = 1;
+  pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
+  return [lo, hi];
+}
+function curveThumb(pts, w, h){
+  const [lo0, hi0] = curveBounds(pts), m = (hi0 - lo0) * 0.12, lo = lo0 - m, hi = hi0 + m, P = 4;
+  const yl = v => (P + (hi - v) / (hi - lo) * (h - 2 * P)).toFixed(1);
+  return `<svg viewBox="0 0 ${w} ${h}"><line x1="0" x2="${w}" y1="${yl(0)}" y2="${yl(0)}"/>`
+       + `<line x1="0" x2="${w}" y1="${yl(1)}" y2="${yl(1)}"/>`
+       + `<path d="${curvePath(pts, w, h, lo, hi, P)}"/></svg>`;
+}
+function presetName(id){ return T('cv.' + (id || 'custom')); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PROPRIETÀ E UNITÀ
+   I valori arrivano e ripartono nelle unità interne (lib/tracks.rb):
+   lunghezze in pollici, angoli in gradi, scala ×, opacità 0–1. Qui si
+   mostrano nell'unità del modello (setUnit) e l'opacità in %.
+═══════════════════════════════════════════════════════════════ */
+const PROPS = {pos_x:'length', pos_y:'length', pos_z:'length', move_x:'length', move_y:'length', move_z:'length',
+               rot_x:'angle', rot_y:'angle', rot_z:'angle',
+               size_x:'length', size_y:'length', size_z:'length', scale:'factor', color:'color', opacity:'ratio',
+               visible:'bool', tag:'tag'};
+const PROP_GROUPS = [['move', ['move_x','move_y','move_z']], ['pos', ['pos_x','pos_y','pos_z']],
+                     ['rot', ['rot_x','rot_y','rot_z']], ['size', ['size_x','size_y','size_z','scale']],
+                     ['look', ['color','opacity','visible','tag']]];
+/* Un piano di sezione si sposta e si accende/spegne (SECTION_PROPS in lib/config.rb) */
+const SECTION_PROPS = ['move_x','move_y','move_z','visible'];
+const LEN_DEC = {mm:0, cm:1, m:3, in:2, ft:3, yd:3};
+let UNIT = {label:'m', factor:39.37007874};
+
+function setUnit(u){ if(u && u.factor) UNIT = u; }
+function kindOf(p){ return PROPS[p]; }
+function toDisp(p, v){
+  const k = kindOf(p);
+  return k === 'length' ? v / UNIT.factor : k === 'ratio' ? v * 100 : v;
+}
+function fromDisp(p, x){
+  const k = kindOf(p);
+  return k === 'length' ? x * UNIT.factor : k === 'ratio' ? x / 100 : x;
+}
+function unitOf(p){
+  const k = kindOf(p);
+  return k === 'length' ? UNIT.label : k === 'angle' ? '°' : k === 'factor' ? '×' : k === 'ratio' ? '%' : '';
+}
+function decOf(p){
+  const k = kindOf(p);
+  return k === 'length' ? (LEN_DEC[UNIT.label] !== undefined ? LEN_DEC[UNIT.label] : 2) : k === 'angle' ? 1 : k === 'factor' ? 2 : 0;
+}
+function fmtVal(p, v){
+  if(kindOf(p) === 'bool') return T(v >= 0.5 ? 'vb.on' : 'vb.off');
+  if(typeof v !== 'number') return String(v || T('vb.untagged'));
+  return toDisp(p, v).toFixed(decOf(p));
+}
+function fmtSec(s){ return (+s).toFixed(2); }
+
+/* Valore iniziale proposto per lo stato di arrivo di una traccia nuova:
+   abbastanza diverso da vedersi subito. */
+function suggestTo(p, rest){
+  if(p.startsWith('move')) return 39.37;           // 1 m
+  switch(kindOf(p)){
+    case 'bool':   return rest >= 0.5 ? 0 : 1;
+    case 'tag':    return ((SEL.tags || []).find(n => n !== rest)) || rest;
+    case 'length': return p.startsWith('size') ? (rest > 0.001 ? rest * 1.5 : 39.37) : rest + 39.37;
+    case 'angle':  return 90;
+    case 'factor': return 1.5;
+    case 'ratio':  return rest > 0.5 ? 0.2 : 1;
+    case 'color':  return rest && rest.toLowerCase() !== '#e85d4a' ? '#e85d4a' : '#4a8de8';
+  }
+  return rest;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIMELINE
+   Ruby manda setTransport({state, t, total, loops}) durante la
+   riproduzione (panel_fps volte al secondo) e a ogni comando. Mentre
+   si trascina il cursore gli aggiornamenti in arrivo non lo spostano.
+═══════════════════════════════════════════════════════════════ */
+let TP = {state:'stop', t:0, total:0, loops:false}, SCRUB = false, scrubLast = 0, scrubTimer = null;
+function setTransport(s){
+  TP = Object.assign(TP, s || {});
+  const play = TP.state === 'play', sl = document.getElementById('tpSlider');
+  const total = Math.max(TP.total || 0, 0);
+  sl.max = total > 0 ? total : 1;
+  if(!SCRUB) sl.value = Math.min(TP.t, sl.max);
+  sl.disabled = total <= 0;
+  document.getElementById('tpTime').innerHTML = `<b>${fmtSec(TP.t)}</b> / ${fmtSec(total)} s${TP.loops ? ' ↻' : ''}`;
+  const pb = document.getElementById('tpPlay');
+  pb.textContent = play ? '⏸' : '▶';
+  pb.title = T(play ? 'tp.pause' : 'tp.play');
+  const st = document.getElementById('tpStop');
+  st.disabled = TP.state === 'stop';
+  st.title = T('tp.stop');
+  const bk = document.getElementById('tpBake');
+  bk.disabled = TP.state === 'stop';
+  bk.textContent = T('tp.bake'); bk.title = T('tp.bake_h');
+  sl.title = T('tp.scrub');
+  setRunning(TP.state);
+}
+/* Scrub: al più ~30 richieste al secondo, l'ultima sempre */
+function scrubInput(el){
+  SCRUB = true;
+  const v = +el.value, now = performance.now();
+  document.getElementById('tpTime').innerHTML = `<b>${fmtSec(v)}</b> / ${fmtSec(TP.total || 0)} s`;
+  clearTimeout(scrubTimer);
+  if(now - scrubLast > 33){ scrubLast = now; sketchup.seek(v); }
+  else scrubTimer = setTimeout(() => { scrubLast = performance.now(); sketchup.seek(v); }, 35);
+}
+function scrubEnd(el){
+  clearTimeout(scrubTimer);
+  sketchup.seek(+el.value);
+  SCRUB = false;
+}
+/* Comandi della timeline: prima le modifiche alle tracce ancora in attesa
+   (Ruby esegue le chiamate nell'ordine in cui arrivano) */
+function tpCmd(name){
+  if(DIRTY) saveTracks();
+  sketchup[name]();
+}
+function setRunning(state){
+  const btn = document.getElementById('btnT'), dot = document.getElementById('dot');
+  if(!btn) return;
+  if(state === 'play'){
+    btn.textContent = '⏸ ' + T('ui.pause'); btn.className = 'btn btn-stop';
+    dot.textContent = '● ' + T('ui.playing'); dot.className = 'dot on';
+  } else {
+    btn.textContent = '▶ ' + T('ui.play'); btn.className = 'btn btn-go';
+    dot.textContent = '● ' + T(state === 'pause' ? 'ui.paused' : 'ui.idle'); dot.className = 'dot' + (state === 'pause' ? ' on' : '');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OGGETTO SELEZIONATO
+   setSelection da Ruby: {kind:'none'|'raw'|'multi'|'obj', …}; per 'obj'
+   pid (persistent_id), name, type, rest (valori di riposo), data
+   ({pivot, tracks}) e live (fa parte della sessione in corso).
+   Ogni modifica va a Ruby (save_tracks) dopo una breve pausa: una voce
+   di annullamento per gruppo di battute, non per tasto.
+═══════════════════════════════════════════════════════════════ */
+let SEL = {kind:'none'}, DIRTY = false, tracksTimer = null;
+
+function setSelection(s){
+  s = s || {kind:'none'};
+  // stesso oggetto e nessuna modifica nostra in arrivo: si aggiornano solo
+  // riposo e stato, senza ridisegnare (non si perde il punto in cui si scrive)
+  if(s.kind === 'obj' && SEL.kind === 'obj' && s.pid === SEL.pid && (s.multi || 0) === (SEL.multi || 0) &&
+     JSON.stringify(s.others) === JSON.stringify(SEL.others) &&
+     (DIRTY || JSON.stringify(s.data) === JSON.stringify(SEL.data))){
+    SEL.rest = s.rest; SEL.live = s.live; SEL.name = s.name; SEL.tags = s.tags;
+    const b = document.getElementById('obLive');
+    if(b) b.hidden = !SEL.live;
+    return;
+  }
+  if(DIRTY) saveTracks();          // l'oggetto precedente prima di cambiare
+  SEL = s;
+  renderObj();
+  markSceneCur();
+}
+
+/* preview: il tempo locale dello stato appena cambiato (anteprima nella
+   scena, se l'impostazione edit_preview è accesa) */
+let PREVIEW_T = null, MULTI_ALL = true;
+function tracksChanged(redraw, preview){
+  DIRTY = true;
+  if(preview !== undefined) PREVIEW_T = preview;
+  clearTimeout(tracksTimer);
+  tracksTimer = setTimeout(saveTracks, 350);
+  if(redraw) renderObj();
+  else updateTotals();
+}
+function saveTracks(){
+  clearTimeout(tracksTimer);
+  if(!DIRTY || SEL.kind !== 'obj') { DIRTY = false; return; }
+  DIRTY = false;
+  const msg = {pid: SEL.pid, data: SEL.data};
+  if(SEL.multi && MULTI_ALL) msg.others = true;
+  if(PREVIEW_T !== null) msg.preview = PREVIEW_T;
+  PREVIEW_T = null;
+  sketchup.save_tracks(JSON.stringify(msg));
+}
+/* Tempo locale in cui la traccia i raggiunge il suo stato j */
+function keyTime(i, j){
+  const tr = SEL.data.tracks[i];
+  return (+tr.delay || 0) + tr.keys.slice(1, j + 1).reduce((a, k) => a + (+k.dur || 0), 0);
+}
+function previewKey(i, j){
+  if(SEL.kind !== 'obj') return;
+  if(DIRTY){ PREVIEW_T = keyTime(i, j); saveTracks(); return; }
+  sketchup.preview(JSON.stringify({pid: SEL.pid, t: keyTime(i, j)}));
+}
+
+function trackCycle(t){ return t.keys.slice(1).reduce((a, k) => a + (+k.dur || 0), 0); }
+function trackLen(t){ return (+t.delay || 0) + trackCycle(t) * (t.loop === 'pingpong' ? 2 : 1); }
+
+function newId(){ return Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 1296).toString(36); }
+
+function valInput(i, j){
+  const tr = SEL.data.tracks[i], p = tr.prop, k = tr.keys[j];
+  if(kindOf(p) === 'bool'){
+    return `<select class="sel" onchange="keyPick(${i},${j},+this.value)">
+      <option value="1"${k.v >= 0.5 ? ' selected' : ''}>${esc(T('vb.on'))}</option>
+      <option value="0"${k.v < 0.5 ? ' selected' : ''}>${esc(T('vb.off'))}</option></select>`;
+  }
+  if(kindOf(p) === 'tag'){
+    const names = (SEL.tags || []).slice();
+    if(!names.includes(k.v)) names.unshift(k.v);
+    return `<select class="sel" onchange="keyPick(${i},${j},this.value)">`
+      + names.map(n => `<option value="${escA(n)}"${n === k.v ? ' selected' : ''}>${esc(n || T('vb.untagged'))}</option>`).join('')
+      + '</select>';
+  }
+  if(kindOf(p) === 'color'){
+    return `<input type="color" class="cpick" value="${escA(k.v)}" oninput="keyColor(${i},${j},this.value,true)" onchange="keyColor(${i},${j},this.value,false)">
+      <input class="nbox hex" type="text" maxlength="7" spellcheck="false" value="${escA(k.v)}" id="kh_${i}_${j}"
+             onchange="keyColor(${i},${j},this.value,false)">`;
+  }
+  return `<input class="vbox" type="text" inputmode="decimal" autocomplete="off" value="${fmtVal(p, k.v)}"
+           oninput="keyVal(${i},${j},this,false)" onchange="keyVal(${i},${j},this,true)" onblur="keyVal(${i},${j},this,true)">
+    <span class="vu">${esc(unitOf(p))}</span>`;
+}
+
+function trackHTML(tr, i){
+  const p = tr.prop;
+  let keys = '';
+  tr.keys.forEach((k, j) => {
+    if(j > 0){
+      keys += `<div class="ktr">↓
+        <input class="vbox sm" type="text" inputmode="decimal" value="${fmtSec(k.dur)}" title="${escA(T('tr.dur'))}"
+               oninput="keyDur(${i},${j},this,false)" onchange="keyDur(${i},${j},this,true)" onblur="keyDur(${i},${j},this,true)">
+        <span class="vu">s</span>
+        <button class="cthumb" title="${escA(T('tr.curve_h'))}" onclick="openCurve(${i},${j})">${curveThumb(k.curve, 76, 34)}</button>
+        <span class="cname">${esc(presetName(k.preset))}</span>
+        ${tr.keys.length > 2 ? `<button class="ibtn del ghost" title="${escA(T('tr.key_del'))}" onclick="keyDel(${i},${j})">✕</button>` : ''}
+      </div>`;
+    }
+    keys += `<div class="kst"><button class="kdot" title="${escA(T('tr.see_h'))}" onclick="previewKey(${i},${j})"></button><span class="kl">${esc(j === 0 ? T('tr.from') : (j === tr.keys.length - 1 ? T('tr.to') : T('tr.state') + ' ' + (j + 1)))}</span>
+      ${valInput(i, j)}
+      <button class="ibtn ghost" title="${escA(T('tr.rest_h'))}" onclick="keyRest(${i},${j})">⌖ ${esc(T('tr.rest'))}</button>
+    </div>`;
+  });
+  const loops = ['none','loop','pingpong'].map(l => `<option value="${l}"${tr.loop === l ? ' selected' : ''}>${esc(T('lp.' + l))}</option>`).join('');
+  return `<div class="tcard${tr.on ? '' : ' off'}" data-i="${i}">
+    <div class="thd">
+      <label class="sw" title="${escA(T('tr.on_h'))}"><input type="checkbox"${tr.on ? ' checked' : ''} onchange="trOn(${i},this.checked)"><span class="knob"></span></label>
+      <span class="tn">${esc(T('pr.' + p))}</span>
+      <button class="ibtn del" title="${escA(T('tr.del'))}" onclick="trDel(${i})">✕</button>
+    </div>
+    <div class="tbody">
+      <div class="tmeta">
+        <span class="f">${esc(T('tr.delay'))}
+          <input class="vbox sm" type="text" inputmode="decimal" value="${fmtSec(tr.delay)}"
+                 oninput="trDelay(${i},this,false)" onchange="trDelay(${i},this,true)" onblur="trDelay(${i},this,true)"><span class="vu">s</span></span>
+        <span class="f">${esc(T('tr.loop'))} <select class="sel" onchange="trLoop(${i},this.value)">${loops}</select></span>
+        <span class="tot" id="ttot_${i}"></span>
+      </div>
+      ${keys}
+      <div class="mbtns" style="margin-top:6px"><button class="ibtn" onclick="keyAdd(${i})">+ ${esc(T('tr.key_add'))}</button></div>
+    </div>
+  </div>`;
+}
+
+function renderObj(){
+  const box = document.getElementById('objPane');
+  if(!box) return;
+  const s = SEL;
+  if(s.kind !== 'obj'){
+    const msg = s.kind === 'raw' ? T('ob.raw') : s.kind === 'multi' ? T('ob.multi').replace('{n}', s.n) : T('ob.none');
+    box.innerHTML = `<div class="note">${esc(msg)}</div>`
+      + (s.kind === 'raw' ? `<div class="mbtns"><button class="btn btn-sm" onclick="sketchup.make_group()">▣ ${esc(T('ob.make_group'))}</button></div>` : '');
+    return;
+  }
+  const sec = s.type === 'section';
+  const pivots = ['base','center','min','origin'].map(v =>
+    `<option value="${v}"${s.data.pivot === v ? ' selected' : ''}>${esc(T('pv.' + v))}</option>`).join('');
+  const used = new Set(s.data.tracks.map(t => t.prop));
+  const adds = PROP_GROUPS.map(([g, ps]) => {
+    ps = ps.filter(p => !sec || SECTION_PROPS.includes(p));
+    if(!ps.length) return '';
+    return `<optgroup label="${escA(T('prg.' + g))}">`
+      + ps.map(p => `<option value="${p}"${used.has(p) ? ' disabled' : ''}>${esc(T('pr.' + p))}</option>`).join('') + '</optgroup>';
+  }).join('');
+  const multi = s.multi ? `<label class="multi"><input type="checkbox"${MULTI_ALL ? ' checked' : ''} onchange="MULTI_ALL=this.checked">
+      ${esc(T('ob.multi_all').replace('{n}', s.multi + 1))}</label><div class="note sm">${esc(T('ob.multi_h'))}</div>` : '';
+  box.innerHTML = `<div class="obhead">
+      <span class="obn" title="${escA(s.name)}">${esc(s.name)}</span>
+      <span class="badge">${esc(T('ob.' + s.type))}</span>
+      <span class="badge live" id="obLive"${s.live ? '' : ' hidden'}>${esc(T('ob.live'))}</span>
+      <span class="sp"></span>
+      ${sec ? '' : `<label for="obPivot" title="${escA(T('ob.pivot_h'))}">${esc(T('ob.pivot'))}</label>
+      <select class="sel" id="obPivot" title="${escA(T('ob.pivot_h'))}" onchange="pivotSet(this.value)">${pivots}</select>`}
+    </div>
+    ${multi}
+    ${startHTML(s, sec)}
+    ${s.data.tracks.length ? s.data.tracks.map(trackHTML).join('') : `<div class="empty">${esc(T('ob.empty'))}</div>`}
+    <div class="addrow">
+      <select class="sel" id="addProp"><option value="" disabled selected>${esc(T('ob.add_pick'))}</option>${adds}</select>
+      <button class="btn btn-sm" onclick="trAdd(document.getElementById('addProp').value)">+ ${esc(T('ob.add'))}</button>
+    </div>`;
+  updateTotals();
+}
+
+/* Partenza (con la timeline, dopo un altro oggetto, quando lo si aziona),
+   assi delle rotazioni e facce: le opzioni dell'oggetto */
+function startHTML(s, sec){
+  const st = s.data.start || {mode:'time', after:0, wait:0, act:'play'};
+  const modes = ['time','after','trigger'].map(m => `<option value="${m}"${st.mode === m ? ' selected' : ''}>${esc(T('st.' + m))}</option>`).join('');
+  let more = '';
+  if(st.mode === 'after'){
+    const others = (s.others || []).slice();
+    const known = others.some(o => o.pid === st.after);
+    const opts = (known ? '' : `<option value="0" selected>${esc(T('st.pick'))}</option>`)
+      + others.map(o => `<option value="${o.pid}"${o.pid === st.after ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
+    more = `<select class="sel" title="${escA(T('st.after_h'))}" onchange="startSet('after', +this.value)">${opts}</select>
+      <span class="f">${esc(T('st.wait'))} <input class="vbox sm" type="text" inputmode="decimal" value="${fmtSec(st.wait)}"
+        onchange="startWait(this)" onblur="startWait(this)"><span class="vu">s</span></span>`;
+  } else if(st.mode === 'trigger'){
+    const acts = ['play','toggle'].map(a => `<option value="${a}"${st.act === a ? ' selected' : ''}>${esc(T('st.act_' + a))}</option>`).join('');
+    more = `<select class="sel" title="${escA(T('st.act_h'))}" onchange="startSet('act', this.value)">${acts}</select>
+      <button class="ibtn" title="${escA(T('st.use_h'))}" onclick="sketchup.use_tool()">☝ ${esc(T('st.use'))}</button>`;
+  }
+  const hasLook = s.data.tracks.some(t => t.prop === 'color' || t.prop === 'opacity');
+  const hasRot = s.data.tracks.some(t => t.prop.startsWith('rot'));
+  let opts = '';
+  if(!sec && hasRot){
+    opts += `<span class="f" title="${escA(T('ob.axes_h'))}">${esc(T('ob.axes'))}
+      <select class="sel" onchange="SEL.data.axes=this.value;tracksChanged(false)">
+        ${['object','world'].map(a => `<option value="${a}"${(s.data.axes || 'object') === a ? ' selected' : ''}>${esc(T('ax.' + a))}</option>`).join('')}
+      </select></span>`;
+  }
+  if(!sec && hasLook){
+    opts += `<label class="f" title="${escA(T('ob.faces_h'))}"><input type="checkbox"${s.data.faces ? ' checked' : ''}
+      onchange="SEL.data.faces=this.checked;tracksChanged(false)"> ${esc(T('ob.faces'))}</label>`;
+    if(s.data.faces && s.shared) opts += `<div class="note sm">${esc(T('ob.faces_shared'))}</div>`;
+  }
+  return `<div class="startrow"><span class="f" title="${escA(T('st.mode_h'))}">${esc(T('st.mode'))}
+      <select class="sel" onchange="startSet('mode', this.value)">${modes}</select></span>${more}</div>`
+    + (opts ? `<div class="startrow">${opts}</div>` : '');
+}
+function startSet(k, v){
+  SEL.data.start = Object.assign({mode:'time', after:0, wait:0, act:'play'}, SEL.data.start || {});
+  SEL.data.start[k] = v;
+  tracksChanged(true);
+}
+function startWait(el){
+  let v = curNum(el);
+  const st = SEL.data.start || {};
+  if(v === null){ el.value = fmtSec(st.wait || 0); return; }
+  v = Math.max(0, Math.min(3600, v));
+  el.value = fmtSec(v);
+  if(v === st.wait) return;
+  startSet('wait', v);
+}
+
+function updateTotals(){
+  if(SEL.kind !== 'obj') return;
+  SEL.data.tracks.forEach((t, i) => {
+    const el = document.getElementById('ttot_' + i);
+    if(el) el.textContent = T('tr.total').replace('{s}', fmtSec(trackLen(t))) + (t.loop !== 'none' ? ' ↻' : '');
+  });
+}
+
+/* ── Modifiche ── */
+function curNum(el){ return num(el.value); }
+function trAdd(p){
+  if(!p || SEL.kind !== 'obj' || SEL.data.tracks.some(t => t.prop === p)) return;
+  const rest = SEL.rest[p], preset = lookVal('new_curve') || 'ease_in_out';
+  SEL.data.tracks.push({id:newId(), prop:p, on:true, delay:0, loop:'none', keys:[
+    {v: rest},
+    {v: suggestTo(p, rest), dur: lookVal('new_duration') || 1, preset, curve: (PRESETS[preset] || PRESETS.linear).map(q => q.slice())}
+  ]});
+  tracksChanged(true);
+}
+function trDel(i){ SEL.data.tracks.splice(i, 1); tracksChanged(true); }
+function trOn(i, on){
+  SEL.data.tracks[i].on = on;
+  document.querySelector(`.tcard[data-i="${i}"]`).classList.toggle('off', !on);
+  tracksChanged(false);
+}
+function trLoop(i, v){ SEL.data.tracks[i].loop = v; tracksChanged(false); }
+function trDelay(i, el, fin){
+  let v = curNum(el);
+  if(v === null){ if(fin) el.value = fmtSec(SEL.data.tracks[i].delay); return; }
+  v = Math.max(0, Math.min(3600, v));
+  SEL.data.tracks[i].delay = v;
+  if(fin) el.value = fmtSec(v);
+  tracksChanged(false);
+}
+function pivotSet(v){ SEL.data.pivot = v; tracksChanged(false); }
+function keyVal(i, j, el, fin){
+  const tr = SEL.data.tracks[i];
+  let x = curNum(el);
+  if(x === null){ if(fin) el.value = fmtVal(tr.prop, tr.keys[j].v); return; }
+  let v = fromDisp(tr.prop, x);
+  if(tr.prop.startsWith('size') || tr.prop === 'scale') v = Math.max(0.001, v);
+  if(tr.prop === 'opacity') v = Math.min(1, Math.max(0, v));
+  tr.keys[j].v = v;
+  if(fin) el.value = fmtVal(tr.prop, v);
+  tracksChanged(false, keyTime(i, j));
+}
+/* Visibile / tag: una scelta */
+function keyPick(i, j, v){
+  SEL.data.tracks[i].keys[j].v = v;
+  tracksChanged(false, keyTime(i, j));
+}
+function keyColor(i, j, v, live){
+  const n = normHex(v), tr = SEL.data.tracks[i];
+  if(!n) return;
+  tr.keys[j].v = n;
+  const h = document.getElementById(`kh_${i}_${j}`);
+  if(h && h !== document.activeElement) h.value = n;
+  tracksChanged(!live, keyTime(i, j));
+}
+function keyRest(i, j){
+  const tr = SEL.data.tracks[i];
+  tr.keys[j].v = SEL.rest[tr.prop];
+  tracksChanged(true, keyTime(i, j));
+}
+function keyDur(i, j, el, fin){
+  const k = SEL.data.tracks[i].keys[j];
+  let v = curNum(el);
+  if(v === null){ if(fin) el.value = fmtSec(k.dur); return; }
+  v = Math.max(0, Math.min(3600, v));
+  k.dur = v;
+  if(fin) el.value = fmtSec(v);
+  tracksChanged(false);
+}
+function keyAdd(i){
+  const tr = SEL.data.tracks[i], last = tr.keys[tr.keys.length - 1];
+  const preset = lookVal('new_curve') || 'ease_in_out';
+  tr.keys.push({v: kindOf(tr.prop) === 'color' ? last.v : last.v, dur: lookVal('new_duration') || 1,
+                preset, curve: (PRESETS[preset] || PRESETS.linear).map(q => q.slice())});
+  tracksChanged(true);
+}
+function keyDel(i, j){
+  const tr = SEL.data.tracks[i];
+  if(tr.keys.length <= 2) return;
+  tr.keys.splice(j, 1);
+  tracksChanged(true);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCENA — gli oggetti animati del modello (setScene da Ruby)
+═══════════════════════════════════════════════════════════════ */
+let SCENE = {objects:[], total:0};
+function setScene(s){ SCENE = s || {objects:[], total:0}; renderScene(); }
+function renderScene(){
+  const box = document.getElementById('scenePane');
+  if(!box) return;
+  if(!SCENE.objects.length){ box.innerHTML = `<div class="note">${esc(T('sc.empty'))}</div>`; return; }
+  box.innerHTML = `<div class="note">${esc(T('sc.note'))}</div><div class="slist">`
+    + SCENE.objects.map(o => `<button class="srow" data-pid="${o.pid}" onclick="pickObj(${o.pid})">
+        <span class="sn">${esc(o.name)}</span>
+        <span class="sd">${esc(T('sc.tracks').replace('{n}', o.n))} · ${fmtSec(o.len)} s${o.loops ? ' ↻' : ''} · ${esc(sceneStart(o))}</span>
+        <span class="chips">${o.props.map(p => `<span class="chip">${esc(T('pr.' + p))}</span>`).join('')}</span>
+      </button>`).join('')
+    + `</div><div class="stot">${esc(T('sc.total').replace('{s}', fmtSec(SCENE.total || 0)))}</div>`;
+  markSceneCur();
+}
+function sceneStart(o){
+  if(o.mode === 'trigger') return T('sc.trigger');
+  if(o.at === null || o.at === undefined) return T('sc.chain');
+  return T('sc.at').replace('{s}', fmtSec(o.at));
+}
+function markSceneCur(){
+
+  document.querySelectorAll('.srow').forEach(r => r.classList.toggle('cur', SEL.kind === 'obj' && +r.dataset.pid === SEL.pid));
+}
+function pickObj(pid){
+  sketchup.select_obj(pid);
+  curSub.anim = 'obj';
+  if(curTab === 'anim') selSub('obj'); else selTab('anim');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EDITOR DELLE CURVE
+   Punti trascinabili; doppio clic sul vuoto = nuovo punto, doppio clic
+   su un punto = angolo/morbido, clic destro su un punto = via. Primo e
+   ultimo punto fissi (0,0) e (1,1). Con la griglia attiva i punti vi si
+   agganciano (Maiusc: liberi). Sotto, una pallina percorre la
+   transizione con la curva e la durata vere.
+═══════════════════════════════════════════════════════════════ */
+const CV_W = 560, CV_H = 330, CV_L = 62, CV_R = 18, CV_T = 16, CV_B = 30;
+let CV = null;   // {i, j, lo, hi, drag, hover, t0}
+
+function cvKey(){ return SEL.data.tracks[CV.i].keys[CV.j]; }
+function cvX(x){ return CV_L + x * (CV_W - CV_L - CV_R); }
+function cvY(y){ return CV_T + (CV.hi - y) / (CV.hi - CV.lo) * (CV_H - CV_T - CV_B); }
+function cvFromPx(px, py){
+  return [(px - CV_L) / (CV_W - CV_L - CV_R), CV.hi - (py - CV_T) / (CV_H - CV_T - CV_B) * (CV.hi - CV.lo)];
+}
+function cvRange(){
+  const [lo, hi] = curveBounds(cvKey().curve);
+  CV.lo = Math.min(-0.15, lo - 0.12); CV.hi = Math.max(1.15, hi + 0.12);
+}
+function cvEvt(ev){
+  const svg = document.getElementById('cvsvg'), r = svg.getBoundingClientRect();
+  return cvFromPx((ev.clientX - r.left) * CV_W / r.width, (ev.clientY - r.top) * CV_H / r.height);
+}
+function cvSnap(x, y, ev){
+  if(!lookVal('curve_snap') || (ev && ev.shiftKey)) return [x, y];
+  const g = Math.max(2, Math.round(lookVal('curve_grid') || 10));
+  return [Math.round(x * g) / g, Math.round(y * g * 2) / (g * 2)];
+}
+
+function openCurve(i, j){
+  CV = {i, j, drag:null, hover:null, t0:performance.now()};
+  cvRange();
+  const tr = SEL.data.tracks[i];
+  document.getElementById('cvTitle').textContent = T('cv.title');
+  document.getElementById('cvHead').textContent = `${T('pr.' + tr.prop)} · ${T('cv.seg').replace('{a}', j).replace('{b}', j + 1)}`;
+  document.getElementById('cvX').title = T('help.close');
+  document.getElementById('cvMirror').textContent = '⇄ ' + T('cv.mirror');
+  document.getElementById('cvAll').textContent = T('cv.all');
+  document.getElementById('cvAll').hidden = tr.keys.length <= 2;
+  document.getElementById('cvDone').textContent = T('cv.done');
+  document.getElementById('cvTips').innerHTML = esc(T('cv.tips')).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
+  renderCurve();
+  renderPresets();
+  document.getElementById('curvem').classList.add('open');
+  requestAnimationFrame(cvTick);
+}
+function closeCurve(){
+  if(!CV) return;
+  CV = null;
+  document.getElementById('curvem').classList.remove('open');
+  renderObj();
+}
+
+function renderCurve(){
+  if(!CV) return;
+  const svg = document.getElementById('cvsvg'), k = cvKey(), pts = k.curve;
+  const g = Math.max(2, Math.round(lookVal('curve_grid') || 10));
+  let s = '';
+  for(let a = 0; a <= g; a++){                     // verticali (tempo)
+    const x = cvX(a / g);
+    s += `<line class="${a === 0 || a === g ? 'g1' : 'g'}" x1="${x}" x2="${x}" y1="${CV_T}" y2="${CV_H - CV_B}"/>`;
+  }
+  const y0 = Math.ceil(CV.lo * g * 2) / (g * 2);
+  for(let y = y0; y <= CV.hi + 1e-9; y += 1 / (g * 2)){   // orizzontali (avanzamento)
+    const yy = Math.round(y * 1000) / 1000, py = cvY(yy);
+    const main = Math.abs(yy) < 1e-9 || Math.abs(yy - 1) < 1e-9;
+    if(!main && Math.round(yy * g) !== yy * g) continue;
+    s += `<line class="${main ? 'g1' : 'g'}" x1="${CV_L}" x2="${CV_W - CV_R}" y1="${py}" y2="${py}"/>`;
+    if(main || Math.abs(yy * 2 - Math.round(yy * 2)) < 1e-9)
+      s += `<text class="gl" x="${CV_L - 6}" y="${py + 4}" text-anchor="end">${main ? (yy ? T('tr.to') : T('tr.from')) : yy}</text>`;
+  }
+  s += `<text class="gl" x="${CV_L}" y="${CV_H - 9}">0 s</text>`
+     + `<text class="gl" x="${CV_W - CV_R}" y="${CV_H - 9}" text-anchor="end">${fmtSec(k.dur)} s</text>`;
+  const c = curvePrepare(pts);
+  let d = '';
+  for(let n = 0; n <= 200; n++){
+    const u = n / 200;
+    d += (n ? 'L' : 'M') + cvX(u).toFixed(1) + ' ' + cvY(curveEval(c, u)).toFixed(1);
+  }
+  s += `<path class="crv" d="${d}"/>`;
+  s += `<line class="head" id="cvHead1" x1="0" x2="0" y1="${CV_T}" y2="${CV_H - CV_B}"/><circle class="hdot" id="cvHead2" r="4" cx="-10" cy="-10"/>`;
+  pts.forEach((p, n) => {
+    const end = n === 0 || n === pts.length - 1, x = cvX(p[0]), y = cvY(p[1]);
+    const cls = 'pt' + (end ? ' end' : '') + (CV.drag === n ? ' drag' : '');
+    s += p[2] === 1
+      ? `<rect class="${cls}" data-n="${n}" x="${x - 6}" y="${y - 6}" width="12" height="12" rx="2"/>`
+      : `<circle class="${cls}" data-n="${n}" cx="${x}" cy="${y}" r="7"/>`;
+  });
+  svg.innerHTML = s;
+  document.getElementById('cvName').textContent = presetName(k.preset);
+}
+
+function renderPresets(){
+  const k = cvKey();
+  document.getElementById('cvPres').innerHTML = CURVE_IDS.map(id => {
+    const pts = PRESETS[id] || PRESETS.linear, [lo, hi] = curveBounds(pts), m = (hi - lo) * 0.1;
+    return `<button class="pbtn${k.preset === id ? ' act' : ''}" onclick="curvePreset('${id}')">
+      <svg viewBox="0 0 54 30"><path d="${curvePath(pts, 54, 30, lo - m, hi + m, 3)}"/></svg>${esc(presetName(id))}</button>`;
+  }).join('');
+}
+
+function curveSet(pts, preset){
+  const k = cvKey();
+  k.curve = curveSanitize(pts);
+  k.preset = preset || 'custom';
+  tracksChanged(false);
+  renderCurve();
+  renderPresets();
+}
+function curvePreset(id){
+  cvKey().curve = (PRESETS[id] || PRESETS.linear).map(q => q.slice());
+  cvRange();
+  curveSet(cvKey().curve, id);
+}
+/* Specchio: accelerare ↔ decelerare (x → 1−x, y → 1−y) */
+function curveMirror(){
+  const pts = cvKey().curve.map(p => p[2] === 1 ? [1 - p[0], 1 - p[1], 1] : [1 - p[0], 1 - p[1]]).reverse();
+  cvRange();
+  curveSet(pts, 'custom');
+}
+/* La stessa curva su tutte le transizioni della traccia */
+function curveToAll(){
+  const tr = SEL.data.tracks[CV.i], k = cvKey();
+  tr.keys.forEach((x, j) => { if(j > 0){ x.curve = k.curve.map(q => q.slice()); x.preset = k.preset; } });
+  tracksChanged(false);
+  flashStatus(T('cv.all_done'));
+}
+
+/* Pallina dell'anteprima e testina sulla curva */
+function cvTick(now){
+  if(!CV) return;
+  const k = cvKey(), tr = SEL.data.tracks[CV.i];
+  const D = Math.min(6, Math.max(0.4, +k.dur || 1)) * 1000, P = 600;
+  const ph = ((now - CV.t0) % (D + P)) / D, u = Math.min(1, ph);
+  const e = curveEval(curvePrepare(k.curve), u);
+  const box = document.getElementById('cvPrev');
+  const a = tr.keys[CV.j - 1].v, b = k.v, p = tr.prop;
+  const lab = v => kindOf(p) === 'color' ? v : (fmtVal(p, v) + ' ' + unitOf(p)).trim();
+  if(!box.dataset.ok){
+    box.innerHTML = `<div class="rail"></div><div class="mk" style="left:15%"></div><div class="mk" style="left:85%"></div>
+      <span class="lab" style="left:15%" id="cvLa"></span><span class="lab" style="left:85%" id="cvLb"></span><div class="ball" id="cvBall"></div>`;
+    box.dataset.ok = 1;
+  }
+  document.getElementById('cvLa').textContent = lab(a);
+  document.getElementById('cvLb').textContent = lab(b);
+  const ball = document.getElementById('cvBall');
+  ball.style.left = Math.max(1, Math.min(99, 15 + 70 * e)) + '%';
+  ball.style.background = kindOf(p) === 'color' ? mixHex(a, b, e) : '';
+  const h1 = document.getElementById('cvHead1'), h2 = document.getElementById('cvHead2');
+  if(h1){ const x = cvX(u); h1.setAttribute('x1', x); h1.setAttribute('x2', x); h2.setAttribute('cx', x); h2.setAttribute('cy', cvY(e)); }
+  requestAnimationFrame(cvTick);
+}
+/* Anteprima del colore: miscela semplice (il motore usa OKLab) */
+function mixHex(a, b, e){
+  const A = rgb(a), B = rgb(b);
+  return A && B ? hex(mix(A, B, Math.min(1, Math.max(0, e)))) : a;
+}
+
+function cvShowPos(x, y){
+  const k = cvKey();
+  document.getElementById('cvPos').innerHTML = `${esc(T('cv.time'))} <b>${(x * k.dur).toFixed(2)} s</b> (${Math.round(x * 100)}%) · `
+    + `${esc(T('cv.progress'))} <b>${Math.round(y * 100)}%</b>`;
+}
+
+function cvInit(){
+  const svg = document.getElementById('cvsvg');
+  svg.addEventListener('pointerdown', ev => {
+    if(!CV || ev.button !== 0) return;
+    const n = ev.target.dataset && ev.target.dataset.n;
+    if(n === undefined) return;
+    const pts = cvKey().curve;
+    if(+n === 0 || +n === pts.length - 1) return;
+    CV.drag = +n;
+    CV.moved = false;
+    ev.target.classList.add('drag');
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener('pointermove', ev => {
+    if(!CV) return;
+    let [x, y] = cvEvt(ev);
+    if(CV.drag === null){ cvShowPos(Math.min(1, Math.max(0, x)), y); return; }
+    const pts = cvKey().curve, n = CV.drag;
+    [x, y] = cvSnap(x, y, ev);
+    x = Math.min(pts[n + 1][0] - CURVE_MIN_DX, Math.max(pts[n - 1][0] + CURVE_MIN_DX, x));
+    y = Math.min(CURVE_Y_MAX, Math.max(CURVE_Y_MIN, y));
+    if(!CV.moved && Math.abs(pts[n][0] - x) < 1e-9 && Math.abs(pts[n][1] - y) < 1e-9) return;
+    CV.moved = true;
+    pts[n][0] = x; pts[n][1] = y;
+    if(y < CV.lo + 0.05 || y > CV.hi - 0.05) cvRange();
+    cvKey().preset = 'custom';
+    cvShowPos(x, y);
+    renderCurve();
+  });
+  const end = () => {
+    if(!CV || CV.drag === null) return;
+    CV.drag = null;
+    if(!CV.moved){
+      document.querySelectorAll('#cvsvg .pt.drag').forEach(el => el.classList.remove('drag'));
+      return;
+    }
+    cvRange();
+    curveSet(cvKey().curve, 'custom');
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('dblclick', ev => {
+    if(!CV) return;
+    const pts = cvKey().curve, n = ev.target.dataset && ev.target.dataset.n;
+    if(n !== undefined){
+      if(+n === 0 || +n === pts.length - 1) return;
+      const p = pts[+n];
+      pts[+n] = p[2] === 1 ? [p[0], p[1]] : [p[0], p[1], 1];
+      curveSet(pts, 'custom');
+      return;
+    }
+    let [x, y] = cvSnap(...cvEvt(ev), ev);
+    if(x <= CURVE_MIN_DX || x >= 1 - CURVE_MIN_DX) return;
+    if(pts.some(p => Math.abs(p[0] - x) < CURVE_MIN_DX)) return;
+    if(pts.length >= CURVE_MAX_PTS){ flashStatus(T('cv.max')); return; }
+    curveSet(pts.concat([[x, y]]), 'custom');
+  });
+  svg.addEventListener('contextmenu', ev => {
+    if(!CV) return;
+    const pts = cvKey().curve, n = ev.target.dataset && ev.target.dataset.n;
+    if(n === undefined || +n === 0 || +n === pts.length - 1) return;
+    pts.splice(+n, 1);
+    curveSet(pts, 'custom');
+  });
+}
+
+/* ═══ Guida ═══
+   Testi help.* in lang/*.json; le parole tra [quadre] diventano <kbd>. */
+const HELP_ITEMS = 8;
+function helpText(k){ return esc(T(k)).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>'); }
+function helpHTML(){
+  let li = '';
+  for(let i = 1; i <= HELP_ITEMS; i++) li += `<li>${helpText('help.' + i)}</li>`;
+  return `<h2 id="helpTitle">${esc(T('help.title'))}</h2>
+    <p>${helpText('help.intro')}</p><ul>${li}</ul>`;
+}
+function openHelp(){
+  document.getElementById('help').classList.add('open');
+  document.getElementById('helpX').focus();
+}
+function closeHelp(){
+  document.getElementById('help').classList.remove('open');
+  document.getElementById('btnHelp').focus();
+}
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(document.getElementById('curvem').classList.contains('open')){ e.stopPropagation(); closeCurve(); }
+  else if(document.getElementById('logm').classList.contains('open')){ e.stopPropagation(); closeLog(); }
+  else if(document.getElementById('help').classList.contains('open')){ e.stopPropagation(); closeHelp(); }
+}, true);
+/* Barra spaziatrice fuori dalle caselle: Play/Pausa */
+document.addEventListener('keydown', e => {
+  if(e.code !== 'Space' || e.repeat) return;
+  const t = e.target;
+  if(t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON')) return;
+  e.preventDefault();
+  tpCmd('toggle');
+});
+
+</script>
+</body>
+</html>
