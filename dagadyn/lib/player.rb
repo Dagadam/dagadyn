@@ -12,7 +12,11 @@ module DagaDyn
     # = il suo riposo); alla fine lo rimette com'era. Nel frattempo:
     #
     # - le trasformazioni si cambiano con move!, che non lascia voci di
-    #   annullamento (è fatto per le animazioni): Ctrl+Z resta pulito;
+    #   annullamento (è fatto per le animazioni): Ctrl+Z resta pulito. Ma
+    #   move! non rifà le ombre né l'ingombro dei piani di taglio: con le
+    #   ombre accese la stessa trasformazione si rimette anche dentro
+    #   l'operazione (shadow_sync), e ExtentsOverlay (lib/paths.rb) dà a
+    #   SketchUp l'ingombro di adesso;
     # - colore, opacità, visibilità, tag e piani di sezione cambiano il
     #   modello: si cambiano in operazioni trasparenti accodate alla prima,
     #   e il ripristino pure: resta una sola voce "Animazione DagaDyn",
@@ -75,11 +79,13 @@ module DagaDyn
         if keep
           bake_items(s)
         else
+          back = s[:items].select { |e, it| it[:last_tr] && e.valid? && !it[:section] }.keys
           s[:items].each { |e, it| item_restore(e, it) }
-          if s[:shadows] || s[:items].any? { |_e, it| model_touch?(it) }
+          if s[:shadows] || s[:items].any? { |_e, it| model_touch?(it) } || !back.empty?
             op_in(s, model) do
               s[:items].each { |e, it| item_unpaint(s, e, it) }
               shadows_restore(s)
+              shadow_sync(back) if shadows_follow?(s)
             end
           end
         end
@@ -114,8 +120,15 @@ module DagaDyn
     end
 
     def self.item_remove(s, e, it)
+      back = it[:last_tr] && !it[:section]
       item_restore(e, it)
-      op_in(s, s[:model]) { item_unpaint(s, e, it) } if model_touch?(it)
+      sync = back && shadows_follow?(s)
+      if model_touch?(it) || sync
+        op_in(s, s[:model]) do
+          item_unpaint(s, e, it)
+          shadow_sync([e]) if sync
+        end
+      end
       s[:items].delete(e)
       s[:by_pid].delete_if { |_k, v| v.equal?(it) }
     end
@@ -379,6 +392,7 @@ module DagaDyn
       s[:t] = t
       s[:tick] += 1
       jobs = []
+      moved = []
       s[:items].each do |e, it|
         next unless e.valid?
         local = item_local(s, it, t)
@@ -387,13 +401,19 @@ module DagaDyn
         prev = it[:last_v]
         next if !force && v == prev
         it[:last_v] = v
-        apply_item(s, e, it, v)
+        moved << e if apply_item(s, e, it, v)
         touched = it[:section] || v.any? { |k, x| MODEL_PROPS.include?(k) && (force || prev.nil? || prev[k] != x) }
         jobs << [e, it, v] if touched
       end
       dead = s[:items].keys.reject(&:valid?)
       dead.each { |e| s[:by_pid].delete_if { |_k, it| it.equal?(s[:items][e]) }; s[:items].delete(e) }
-      op_in(s, s[:model]) { jobs.each { |e, it, v| paint_item(s, e, it, v) } } unless jobs.empty?
+      moved = [] unless shadows_follow?(s)
+      unless jobs.empty? && moved.empty?
+        op_in(s, s[:model]) do
+          jobs.each { |e, it, v| paint_item(s, e, it, v) }
+          shadow_sync(moved)
+        end
+      end
     rescue => dyn_err
       log_error(__method__, dyn_err)
     end
@@ -407,6 +427,24 @@ module DagaDyn
       place(e, tr)
       it[:last_tr] = tr
       it[:moved] = s[:tick]
+      true
+    end
+
+    # ── Ombre che seguono gli oggetti ───────────────────────────────
+    # move! non rifà le ombre nella vista: restano quelle della posa di
+    # riposo (un oggetto abbassato lascia a terra l'ombra lunga e fa ombra
+    # su quelli vicini). Rimettere la stessa trasformazione dentro la nostra
+    # operazione le fa ricalcolare. Solo con le ombre accese e non nel video
+    # di DagaWASD: write_image le ricalcola da sé.
+    def self.shadows_follow?(s)
+      s[:ext] != :video && s[:model].shadow_info['DisplayShadows'] ? true : false
+    rescue
+      false
+    end
+
+    # Dentro un'operazione
+    def self.shadow_sync(list)
+      list.each { |e| e.transformation = e.transformation if e.valid? }
     end
 
     # Le proprietà che cambiano il modello. Dentro un'operazione.
@@ -456,7 +494,12 @@ module DagaDyn
     end
 
     def self.shadows_back(s)
-      op_in(s, s[:model]) { shadows_restore(s) } if s[:shadows]
+      return unless s[:shadows]
+      op_in(s, s[:model]) do
+        shadows_restore(s)
+        # spente durante il Play: tornano con la posa di adesso, non quella di riposo
+        shadow_sync(s[:items].select { |_e, it| it[:last_tr] }.keys) if shadows_follow?(s)
+      end
     end
 
     # ── Comandi della timeline ──────────────────────────────────────

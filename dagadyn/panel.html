@@ -913,6 +913,28 @@ function absent(subId){
   });
 }
 
+/* Con DagaWASD caricata lingua e aspetto sono i suoi (lib/settings.rb,
+   SHARED_UI): i sotto-tab Lingua e Aspetto spariscono come le parti assenti,
+   ma si possono rimettere (DagaWASD disattivata). I campi restano nel DOM:
+   applyLook continua a leggerli, con i valori di DagaWASD. */
+let SHARED = [];
+const SHARED_SUBS = ['lang', 'look'];
+function setShared(keys){
+  SHARED = keys || [];
+  const on = SHARED.length > 0;
+  try { localStorage.setItem('dagadyn_shared', on ? '1' : ''); } catch(e){}
+  SPEC.forEach(t => {
+    t.subs.filter(s => SHARED_SUBS.includes(s.id)).forEach(s => {
+      const all = [s].concat(s.groups || []).concat(...(s.groups || []).map(g => g.fields));
+      all.forEach(x => {
+        if(x.lv0 === undefined) x.lv0 = x.lv;
+        x.lv = on ? ABSENT : x.lv0;
+      });
+    });
+    t.lv = Math.min(...t.subs.map(s => s.lv));
+  });
+}
+
 function lvswHTML(){
   return LEVELS.map(n => `<button data-lvl="${n}" title="${escA(T('lvl.h' + n))}"
       onclick="setLevel(${n}, true)">${esc(T('lvl.' + n))}</button>`).join('');
@@ -1307,6 +1329,7 @@ function applyLang(payload){
   L       = payload.strings || {};
   LANGS   = payload.languages || LANGS;
   CURLANG = payload.current || 'auto';
+  setShared(payload.shared);
   document.documentElement.lang = payload.resolved || 'en';
   document.body.classList.toggle('rtl', !!payload.rtl);
   if(payload.presets) PRESETS = payload.presets;
@@ -1722,7 +1745,7 @@ function loadSettings(s){
 /* Ripristina i valori delle impostazioni; lingua e livello restano. */
 function resetAll(){
   const d = {};
-  Object.keys(FIELDS).forEach(k => { if(DEF[k] !== undefined) d[k] = DEF[k]; });
+  Object.keys(FIELDS).forEach(k => { if(DEF[k] !== undefined && !SHARED.includes(k)) d[k] = DEF[k]; });
   loadSettings(d); saveNow();
 }
 
@@ -1733,6 +1756,7 @@ window.onload = () => {
   try { const lv = +localStorage.getItem('dagadyn_lvl'); if(LEVELS.includes(lv)) LEVEL = lv; } catch(e){}
   document.body.dataset.lv = LEVEL;
   try { LOOK_CACHE = JSON.parse(localStorage.getItem('dagadyn_look')) || {}; } catch(e){}
+  try { if(localStorage.getItem('dagadyn_shared')) setShared(['language'].concat(LOOK_KEYS.filter(k => k !== 'ui_logo'))); } catch(e){}   // come l'ultima volta, finché Ruby non conferma
   SPEC.forEach(x => {
     try {
       const s = localStorage.getItem('dagadyn_sub_' + x.id);

@@ -1,5 +1,19 @@
 # Novità di DagaDyn
 
+## [Prossima versione]
+
+### Correzioni
+- **Il quadrato rosso (Stop) della barra non faceva niente**: ora ferma l'animazione come Stop nel menu.
+- **Ombre giuste durante il movimento**: prima restavano quelle della posizione di riposo (un oggetto abbassato
+  lasciava a terra l'ombra lunga e faceva ombra sugli oggetti vicini).
+- **Oggetti e cielo non vengono più tagliati** quando un oggetto animato esce dalla posizione di riposo (più alto,
+  spostato): con DagaWASD le nuvole sparivano a ogni ciclo.
+
+### Con DagaWASD
+- **Lingua e aspetto del pannello sono quelli di DagaWASD**: in Sistema non compaiono Lingua e Aspetto, e se li
+  cambi in DagaWASD il pannello di DagaDyn li segue subito. Il logo resta quello di DagaDyn; da sola DagaDyn usa
+  di nuovo i suoi.
+
 ## [0.2.0] — 2026-11-11
 
 ### Nuove proprietà

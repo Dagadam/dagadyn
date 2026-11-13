@@ -122,19 +122,51 @@ module DagaDyn
           Dyn.paths_draw(view)
         end
       end
+
+      # ════════════════════════════════════════════════════════════
+      # Ingombro durante l'animazione. move! non aggiorna l'ingombro che
+      # SketchUp usa per i piani di taglio: resta quello di riposo, mentre
+      # model.bounds è già quello nuovo. Un oggetto che esce dal riposo
+      # (più alto, spostato) veniva tagliato dal piano lontano, e con lui
+      # il cielo di DagaWASD, che si mette appena oltre model.bounds: le
+      # nuvole sparivano a ogni ciclo. Questo Overlay non disegna niente e,
+      # solo durante una sessione, dice a SketchUp l'ingombro attuale.
+      # ════════════════════════════════════════════════════════════
+      class ExtentsOverlay < Sketchup::Overlay
+        def initialize
+          super('dagadyn.extents', Dyn.t('op.anim'), description: 'DagaDyn')
+        end
+
+        def getExtents
+          Dyn.session_extents
+        end
+      end
+    end
+
+    def self.session_extents
+      s = @session
+      m = Sketchup.active_model
+      return Geom::BoundingBox.new unless s && m && s[:model] == m && !s[:items].empty?
+      Geom::BoundingBox.new.add(m.bounds)
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      Geom::BoundingBox.new
     end
 
     def self.overlay_attach(model)
       return unless overlay_ok? && model.respond_to?(:overlays)
       @overlays ||= {}
       @overlays.delete_if { |m, _| !m.valid? }
-      ov = @overlays[model]
-      unless ov
-        ov = PathsOverlay.new
-        model.overlays.add(ov)
-        @overlays[model] = ov
+      ov, ex = @overlays[model]
+      unless ov && ex
+        # quelli già nel modello (estensione ricaricata) si riusano: lo stesso id non si aggiunge due volte
+        have = model.overlays.to_a
+        ov = have.find { |o| o.overlay_id == 'dagadyn.paths' } || PathsOverlay.new.tap { |o| model.overlays.add(o) }
+        ex = have.find { |o| o.overlay_id == 'dagadyn.extents' } || ExtentsOverlay.new.tap { |o| model.overlays.add(o) }
+        @overlays[model] = [ov, ex]
       end
       ov.enabled = cf('show_paths') if ov.respond_to?(:enabled=)
+      ex.enabled = true if ex.respond_to?(:enabled=)
     rescue => dyn_err
       log_error(__method__, dyn_err)
     end

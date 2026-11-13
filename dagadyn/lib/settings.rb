@@ -64,6 +64,58 @@ module DagaDyn
       @cfg['panel_fps']  = @cfg['panel_fps'].to_i.clamp(1, 60)
     end
 
+    # ── Lingua e aspetto di DagaWASD ────────────────────────────────
+    # Con DagaWASD caricata, lingua e aspetto del pannello sono i suoi (stesse
+    # chiavi, stessi valori): il pannello di DagaDyn non li mostra e non li
+    # salva, e quelli propri restano in settings.json per quando DagaDyn è da
+    # sola. Il logo no: ognuna ha i suoi (LOOK_CHOICES diversi).
+    SHARED_UI = (['language'] + DEFAULT.keys.grep(/\Aui_/) - ['ui_logo']).freeze
+
+    # Valori condivisi validi (quelli che non lo sono restano i nostri), o
+    # nil se DagaWASD non c'è. boot: all'avvio DagaWASD si carica dopo di noi
+    # (ordine alfabetico), quindi per menu e barra si legge il suo file, se il
+    # suo caricatore è nella cartella Plugins.
+    def self.wasd_ui(boot = false)
+      src =
+        if defined?(::DagaWASD::FPSWalk) && ::DagaWASD::FPSWalk.respond_to?(:cf)
+          w = ::DagaWASD::FPSWalk
+          SHARED_UI.to_h { |k| [k, w.cf(k)] }
+        elsif boot
+          plugins = Sketchup.find_support_file('Plugins').to_s
+          file = File.join(ENV['APPDATA'] || Dir.home, 'DagaWASD', 'settings.json')
+          return nil unless File.exist?(File.join(plugins, 'dagawasd.rb')) && File.exist?(file)
+          JSON.parse(File.read(file, encoding: 'UTF-8'))
+        end
+      return nil unless src.is_a?(Hash)
+      src.select { |k, v| SHARED_UI.include?(k) && ui_value_ok?(k, v) }
+    rescue
+      nil
+    end
+
+    def self.ui_value_ok?(k, v)
+      d = DEFAULT[k]
+      case d
+      when true, false then v == true || v == false
+      when Numeric     then v.is_a?(Numeric) && v.to_f.finite?
+      when String
+        if LOOK_CHOICES[k]        then LOOK_CHOICES[k].include?(v)
+        elsif d.start_with?('#')  then v.is_a?(String) && v.match?(/\A#\h{6}\z/)
+        else v.is_a?(String)
+        end
+      else false
+      end
+    end
+
+    def self.ui_shared?; !wasd_ui.nil?; end
+
+    # Le impostazioni come le vede il pannello: le nostre, con lingua e
+    # aspetto di DagaWASD quando c'è.
+    def self.panel_cfg(boot = false)
+      load_cfg unless @cfg
+      w = wasd_ui(boot)
+      w ? @cfg.merge(w) : @cfg
+    end
+
     # Prima su un file temporaneo, poi lo scambio: se SketchUp si chiude a
     # metà scrittura, settings.json resta quello di prima invece che troncato.
     def self.save_cfg

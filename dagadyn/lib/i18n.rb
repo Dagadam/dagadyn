@@ -46,8 +46,9 @@ module DagaDyn
       'en'
     end
 
-    def self.load_lang
-      @lang_code = resolve_lang((@cfg || {})['language'])
+    # Con DagaWASD la lingua è la sua (panel_cfg, lib/settings.rb); boot: all'avvio
+    def self.load_lang(boot = false)
+      @lang_code = resolve_lang(panel_cfg(boot)['language'])
       base  = read_json(File.join(LANG_DIR, 'en.json'))
       @lang = @lang_code == 'en' ? base : base.merge(read_json(File.join(LANG_DIR, "#{@lang_code}.json")))
       @lang_rtl = !!(lang_index.find { |l| l['code'] == @lang_code } || {})['rtl']

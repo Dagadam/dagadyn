@@ -20,7 +20,8 @@ module DagaDyn
       payload = {
         'strings'   => @lang,
         'languages' => lang_index,
-        'current'   => (@cfg['language'] || 'auto'),
+        'current'   => (panel_cfg['language'] || 'auto'),
+        'shared'    => ui_shared? ? SHARED_UI : [],     # lingua e aspetto vengono da DagaWASD
         'resolved'  => @lang_code,
         'rtl'       => @lang_rtl,
         'presets'   => PRESET_POINTS,
@@ -30,7 +31,8 @@ module DagaDyn
       # I valori predefiniti esistono solo qui (DEFAULT): il pannello li
       # riceve per "Ripristina", per i segni di modifica e per la guida.
       @dialog.execute_script("setDefaults(#{js_json(DEFAULT)})")
-      @dialog.execute_script("loadSettings(#{js_json(@cfg)})")
+      @dialog.execute_script("loadSettings(#{js_json(panel_cfg)})")
+      @ui_sig = wasd_ui
       @dialog.execute_script("setLogCount(#{log_count})")
       panel_transport
       panel_selection
@@ -320,12 +322,14 @@ module DagaDyn
       end
       cb.call('request_settings') { |_| push_panel_state }
       cb.call('save_settings') do |json|
-        @cfg.merge!(JSON.parse(json).select { |k, _| DEFAULT.key?(k) })
+        shared = ui_shared? ? SHARED_UI : []
+        @cfg.merge!(JSON.parse(json).select { |k, _| DEFAULT.key?(k) && !shared.include?(k) })
         sanitize_cfg
         save_cfg
         overlay_refresh
       end
       cb.call('set_language') do |code|
+        next push_panel_state if ui_shared?   # la lingua la decide DagaWASD
         code = code.to_s
         @cfg['language'] = (code == 'auto' || lang_codes.include?(code)) ? code : 'auto'
         save_cfg
@@ -352,9 +356,37 @@ module DagaDyn
       cb.call('preview')     { |json| preview_obj(json) }
       cb.call('use_tool')    { |_| start_use_tool }
 
-      @dialog.set_on_closed { @dialog = nil } if @dialog.respond_to?(:set_on_closed)
+      @dialog.set_on_closed { @dialog = nil; ui_watch_stop } if @dialog.respond_to?(:set_on_closed)
       @dialog.show
       dialog_on_screen(@dialog)
+      ui_watch_start
+    end
+
+    # Lingua o aspetto cambiati nel pannello di DagaWASD mentre il nostro è
+    # aperto: un'occhiata al secondo (legge solo valori già in memoria).
+    def self.ui_watch_start
+      return if @ui_watch
+      @ui_watch = UI.start_timer(1.0, true) { ui_watch }
+    end
+
+    def self.ui_watch_stop
+      UI.stop_timer(@ui_watch) if @ui_watch
+      @ui_watch = nil
+    end
+
+    def self.ui_watch
+      return ui_watch_stop unless panel_open?
+      now = wasd_ui
+      return if now == @ui_sig
+      lang = (now || {})['language'] != (@ui_sig || {})['language'] || now.nil? != @ui_sig.nil?
+      @ui_sig = now
+      if lang
+        push_panel_state                                   # ricostruisce il pannello nella nuova lingua
+      else
+        js("loadSettings(#{js_json(panel_cfg)})")          # solo l'aspetto
+      end
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
     end
 
   end

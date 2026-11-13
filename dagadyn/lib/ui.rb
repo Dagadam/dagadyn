@@ -12,7 +12,7 @@ module DagaDyn
 
     def self.register_ui
       load_cfg
-      load_lang
+      load_lang(true)      # con DagaWASD, menu e barra nella sua lingua
       sub = UI.menu('Plugins').add_submenu('DagaDyn')
       sub.add_item(t('menu.panel')) { show_panel }
       sub.add_separator
@@ -21,32 +21,32 @@ module DagaDyn
       sub.add_item(t('menu.use'))   { start_use_tool }
 
       tb = UI::Toolbar.new('DagaDyn')
-      cmd_panel = UI::Command.new('DagaDyn') { show_panel }
-      cmd_panel.tooltip = t('tip.panel')
-      cmd_panel.status_bar_text = t('tip.panel')
-      icon(cmd_panel, 'dyn')
-      tb.add_item(cmd_panel)
+      btn_panel = UI::Command.new('DagaDyn') { show_panel }
+      btn_panel.tooltip = t('tip.panel')
+      btn_panel.status_bar_text = t('tip.panel')
+      icon(btn_panel, 'dyn')
+      tb.add_item(btn_panel)
 
-      cmd_play = UI::Command.new('DagaDyn Play') { cmd_toggle }
-      cmd_play.tooltip = t('tip.play')
-      cmd_play.status_bar_text = t('tip.play')
-      icon(cmd_play, 'play')
-      cmd_play.set_validation_proc { playing? ? MF_CHECKED : MF_UNCHECKED } if cmd_play.respond_to?(:set_validation_proc)
-      tb.add_item(cmd_play)
+      btn_play = UI::Command.new('DagaDyn Play') { cmd_toggle }
+      btn_play.tooltip = t('tip.play')
+      btn_play.status_bar_text = t('tip.play')
+      icon(btn_play, 'play')
+      btn_play.set_validation_proc { playing? ? MF_CHECKED : MF_UNCHECKED } if btn_play.respond_to?(:set_validation_proc)
+      tb.add_item(btn_play)
 
-      cmd_stop = UI::Command.new('DagaDyn Stop') { cmd_stop }
-      cmd_stop.tooltip = t('tip.stop')
-      cmd_stop.status_bar_text = t('tip.stop')
-      icon(cmd_stop, 'stop')
-      cmd_stop.set_validation_proc { @session ? MF_ENABLED : MF_GRAYED } if cmd_stop.respond_to?(:set_validation_proc)
-      tb.add_item(cmd_stop)
+      btn_stop = UI::Command.new('DagaDyn Stop') { cmd_stop }
+      btn_stop.tooltip = t('tip.stop')
+      btn_stop.status_bar_text = t('tip.stop')
+      icon(btn_stop, 'stop')
+      btn_stop.set_validation_proc { @session ? MF_ENABLED : MF_GRAYED } if btn_stop.respond_to?(:set_validation_proc)
+      tb.add_item(btn_stop)
 
-      cmd_use = UI::Command.new('DagaDyn Aziona') { start_use_tool }
-      cmd_use.tooltip = t('tip.use')
-      cmd_use.status_bar_text = t('tip.use')
-      icon(cmd_use, 'use')
-      cmd_use.set_validation_proc { use_tool_on? ? MF_CHECKED : MF_UNCHECKED } if cmd_use.respond_to?(:set_validation_proc)
-      tb.add_item(cmd_use)
+      btn_use = UI::Command.new('DagaDyn Aziona') { start_use_tool }
+      btn_use.tooltip = t('tip.use')
+      btn_use.status_bar_text = t('tip.use')
+      icon(btn_use, 'use')
+      btn_use.set_validation_proc { use_tool_on? ? MF_CHECKED : MF_UNCHECKED } if btn_use.respond_to?(:set_validation_proc)
+      tb.add_item(btn_use)
       tb.restore
     end
 

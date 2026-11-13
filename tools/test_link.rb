@@ -209,5 +209,22 @@ eq('faccia dipinta: copia temporanea a metà opacità', [f1.material.name.start_
 D.cmd_stop
 eq('faccia di nuovo col suo materiale', f1.material.equal?(brick), true)
 
+# ── Lingua e aspetto da DagaWASD ──
+eq('senza cf di DagaWASD: niente in comune', D.ui_shared?, false)
+own = D.cf('ui_theme')
+wcfg = { 'language' => 'de', 'ui_theme' => 'midnight', 'ui_accent' => '#123abc', 'ui_font_size' => 17.0,
+         'ui_font' => 'nonesiste', 'ui_logo' => 'bolt', 'play_speed' => 3.0 }
+W.define_singleton_method(:cf) { |k| wcfg[k] }
+pc = D.panel_cfg
+eq('con DagaWASD: lingua e tema i suoi', [pc['language'], pc['ui_theme'], pc['ui_accent'], pc['ui_font_size']], ['de', 'midnight', '#123abc', 17.0])
+eq('un suo valore non valido: resta il nostro', pc['ui_font'], D.cf('ui_font'))
+eq('il logo resta di DagaDyn', pc['ui_logo'], D.cf('ui_logo'))
+eq('le impostazioni non grafiche restano nostre', pc['play_speed'], D.cf('play_speed'))
+eq('le nostre non vengono toccate', D.cf('ui_theme'), own)
+eq('lingua dei testi: quella di DagaWASD', (D.load_lang; D.instance_variable_get(:@lang_code)), 'de')
+W.singleton_class.send(:remove_method, :cf)
+eq('DagaWASD tolta: di nuovo le nostre', [D.ui_shared?, D.panel_cfg['ui_theme']], [false, own])
+D.load_lang
+
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

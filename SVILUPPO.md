@@ -51,12 +51,24 @@ Il collegamento sta in DagaWASD, `lib/dyn_link.rb`, e chiama solo i metodi pubbl
 esploratore in tempo reale, video al tempo del video (fotogramma k → k / fps). Mentre DagaWASD guida, il Play
 di DagaDyn aspetta.
 
+Lingua e aspetto del pannello: con DagaWASD caricata sono i suoi (stesse chiavi `language` e `ui_*`, tranne
+`ui_logo`; `SHARED_UI` e `panel_cfg` in `lib/settings.rb`). In Sistema spariscono Lingua e Aspetto, i valori
+propri restano in `settings.json` per quando DagaDyn è da sola, e se cambiano in DagaWASD il pannello aperto
+li segue entro un secondo. Menu e barra nascono prima che DagaWASD sia caricata: per loro si legge il suo
+`settings.json`, se `dagawasd.rb` è nella cartella Plugins.
+
 ## Regole del motore
 
 - La trasformazione non si accumula: a ogni fotogramma si ricalcola dal riposo
   (`Trasla · Rz · Ry · Rx · R0 · Scala attorno al pivot`).
 - Le trasformazioni si cambiano con `move!`, che non lascia voci di annullamento. Colore e opacità passano
   da un materiale temporaneo per oggetto, in operazioni trasparenti accodate a una sola voce.
+- `move!` però non aggiorna né le ombre della vista né l'ingombro che SketchUp usa per i piani di taglio:
+  restano quelli della posa di riposo. Per questo, con le ombre accese, a ogni fotogramma la stessa
+  trasformazione si rimette anche dentro l'operazione della sessione (`shadow_sync`, non nel video di
+  DagaWASD, dove `write_image` ricalcola da sé), e un Overlay senza disegno (`ExtentsOverlay`) dà a
+  SketchUp l'ingombro attuale con `getExtents`. Senza, le nuvole di DagaWASD sparivano e le ombre
+  restavano quelle dei blocchi a riposo.
 - Stop rimette tutto a riposo. Al salvataggio il modello torna a riposo e poi riprende, così nel file
   finisce sempre lo stato di progetto.
 - Il motore non dipende da chi batte il tempo: `advance(now)` con `view.animation`, `ext_tick(secondi)`
