@@ -551,7 +551,7 @@ button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
 <!-- Timeline: sempre visibile. Lo stato arriva da Ruby con setTransport. -->
 <div class="transport">
   <button class="tbtn" id="tpStop" onclick="tpCmd('stop')">⏹</button>
-  <button class="tbtn go" id="tpPlay" onclick="tpCmd('toggle')">▶</button>
+  <button class="tbtn go" id="tpPlay" onclick="tpMain()">▶</button>
   <input type="range" id="tpSlider" min="0" max="1" step="0.001" value="0"
          oninput="scrubInput(this)" onchange="scrubEnd(this)">
   <span class="ttime" id="tpTime">0.00 / 0.00 s</span>
@@ -2026,9 +2026,11 @@ function setTransport(s){
   sl.hidden = empty; tm.hidden = empty; em.hidden = !empty;
   em.textContent = T('tp.empty');
   tm.innerHTML = `<b>${fmtSec(TP.t)}</b> / ${fmtSec(total)} s${TP.loops ? ' ↻' : ''}`;
-  const pb = document.getElementById('tpPlay');
-  pb.textContent = play ? '⏸' : '▶';
-  pb.title = T(play ? 'tp.pause' : 'tp.play');
+  // Timeline vuota: Play non avrebbe niente da far partire, il tasto diventa
+  // lo strumento Aziona (durante il movimento resta ⏸, per fermare tutto)
+  const pb = document.getElementById('tpPlay'), use = empty && !play;
+  pb.textContent = play ? '⏸' : use ? '☝' : '▶';
+  pb.title = play ? T('tp.pause') : use ? T('tip.use') : T('tp.play');
   const st = document.getElementById('tpStop');
   st.disabled = TP.state === 'stop';
   st.title = T('tp.stop');
@@ -2051,6 +2053,12 @@ function scrubEnd(el){
   clearTimeout(scrubTimer);
   sketchup.seek(+el.value);
   SCRUB = false;
+}
+/* Il tasto principale (e la barra spaziatrice): Play/Pausa, oppure, con la
+   timeline vuota e niente in movimento, lo strumento Aziona */
+function tpMain(){
+  if(TP.state !== 'play' && (TP.total || 0) <= 0) tpCmd('use_tool');
+  else tpCmd('toggle');
 }
 /* Comandi della timeline: prima le modifiche alle tracce ancora in attesa
    (Ruby esegue le chiamate nell'ordine in cui arrivano) */
@@ -2680,7 +2688,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if(t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON')) return;
   e.preventDefault();
-  tpCmd('toggle');
+  tpMain();
 });
 
 </script>

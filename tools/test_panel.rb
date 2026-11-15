@@ -83,6 +83,17 @@ script2 = <<~JS
   setTransport({state:'play', t:1.5, total:4}); out.full = look().concat([els.tpTime.innerHTML]);
   setTransport({state:'stop', t:0, total:0}); out.stop = look();
   out.noBtn = !('btnT' in els);
+  // tasto principale: ☝ (strumento Aziona) con la timeline vuota e niente in moto
+  let DIRTY = false; const calls = [];
+  function saveTracks(){}
+  const sketchup = new Proxy({}, {get: (_o, n) => () => calls.push(n)});
+  #{js_fn(html, 'tpCmd')}
+  #{js_fn(html, 'tpMain')}
+  const btn = () => [els.tpPlay.textContent, els.tpPlay.title];
+  setTransport({state:'pause', t:0, total:0}); out.useBtn = btn(); tpMain();
+  setTransport({state:'play', t:3, total:0});  out.moving = btn(); tpMain();
+  setTransport({state:'pause', t:1, total:4}); out.playBtn = btn(); tpMain();
+  out.calls = calls;
   process.stdout.write(JSON.stringify(out));
 JS
 File.write(path, script2)
@@ -92,6 +103,10 @@ eq('timeline con oggetti: barra e timer, niente riga', r2['full'][0, 3] + [r2['f
 eq('in riproduzione: l\'etichetta lo dice', r2['full'][4], '● ui.playing')
 eq('fermo', r2['stop'][4], '● ui.idle')
 eq('nessun tasto ▶ in alto', r2['noBtn'], true)
+eq('timeline vuota e fermo: il tasto è lo strumento Aziona', r2['useBtn'], ['☝', 'tip.use'])
+eq('timeline vuota ma qualcosa si muove: ⏸ per fermarlo', r2['moving'], ['⏸', 'tp.pause'])
+eq('timeline con oggetti: Play', r2['playBtn'], ['▶', 'tp.play'])
+eq('i comandi mandati a SketchUp', r2['calls'], %w[use_tool toggle toggle])
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

@@ -112,14 +112,21 @@ module DagaDyn
       false
     end
 
+    # Gli oggetti del percorso che si azionano, dal più interno; nessun effetto
+    # (lo strumento Aziona li usa anche solo per evidenziare sotto il mouse).
+    def self.use_targets(path)
+      cand = path_insts(path).reverse
+      cand += (path || []).select { |x| section?(x) }
+      cand.select do |e|
+        data = read_data(e)
+        data && data['start']['mode'] == 'trigger' && data['tracks'].any? { |t| t['on'] }
+      end
+    end
+
     # Il più interno del percorso che si aziona; parte la sessione se serve.
     def self.use_path(path, hold = true)
       model = Sketchup.active_model or return nil
-      cand = path_insts(path).reverse
-      cand += (path || []).select { |x| section?(x) }
-      cand.each do |e|
-        data = read_data(e)
-        next unless data && data['start']['mode'] == 'trigger' && data['tracks'].any? { |t| t['on'] }
+      use_targets(path).each do |e|
         s = @session
         unless s && s[:model] == model
           return nil if foreign_busy?

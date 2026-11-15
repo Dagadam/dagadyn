@@ -93,6 +93,17 @@ module Geom
     def width; max.x - min.x; end
     def height; max.y - min.y; end
     def depth; max.z - min.z; end
+    # come SketchUp: 0..7, prima i 4 in basso (x, poi y), poi i 4 in alto
+    def corner(k)
+      Point3d.new(k & 1 == 0 ? min.x : max.x, k & 2 == 0 ? min.y : max.y, k & 4 == 0 ? min.z : max.z)
+    end
+    def add(*pts)
+      pts.flatten.each do |p|
+        @min = @min ? Point3d.new([@min.x, p.x].min, [@min.y, p.y].min, [@min.z, p.z].min) : p.clone
+        @max = @max ? Point3d.new([@max.x, p.x].max, [@max.y, p.y].max, [@max.z, p.z].max) : p.clone
+      end
+      self
+    end
   end
 end
 
@@ -101,6 +112,7 @@ Y_AXIS = Geom::Vector3d.new(0, 1, 0)
 Z_AXIS = Geom::Vector3d.new(0, 0, 1)
 ORIGIN = Geom::Point3d.new(0, 0, 0)
 GL_LINE_STRIP = 3
+GL_LINES = 1
 MF_CHECKED = 1; MF_UNCHECKED = 0; MF_ENABLED = 0; MF_GRAYED = 2
 
 module Sketchup
@@ -206,8 +218,18 @@ module Sketchup
     def set_plane(p); $model.need_op!; @plane = p; end
   end
 
+  # Il «pick» finto: i percorsi sotto il mouse si mettono in $picks[[x, y]]
+  class PickHelper
+    def do_pick(x, y); @paths = ($picks || {})[[x, y]] || []; end
+    def count; @paths.size; end
+    def path_at(i); @paths[i]; end
+  end
+
   class View
-    attr_accessor :animation
+    attr_accessor :animation, :tooltip, :line_width, :line_stipple, :drawing_color
+    attr_reader :drawn
+    def pick_helper; PickHelper.new; end
+    def draw(mode, pts); (@drawn ||= []) << [mode, pts]; end
     def invalidate; end
     def show_frame; end
     def model; $model; end
@@ -289,7 +311,10 @@ class Array
 end
 
 module UI
-  def self.start_timer(*_a, &_b); 1; end
+  # i timer non partono, tranne con $run_timers (allora subito)
+  def self.start_timer(*_a, &b); b.call if $run_timers && b; 1; end
   def self.stop_timer(*_a); end
   def self.messagebox(*_a); end
+  def self.create_cursor(path, x, y); ($cursors ||= []) << [path, x, y]; 77; end
+  def self.set_cursor(id); $cursor = id; end
 end

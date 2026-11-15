@@ -11,7 +11,15 @@
 - In alto non c'è più il secondo tasto Play (faceva lo stesso del Play della timeline): restano guida, registro
   errori e lo stato (In riproduzione / In pausa / Fermo).
 - Se nessun oggetto parte con la timeline (solo oggetti azionati e catene dietro di loro), al posto della barra e
-  del timer, che non avrebbero niente da mostrare, una riga lo spiega.
+  del timer, che non avrebbero niente da mostrare, una riga lo spiega, e il tasto Play diventa lo strumento Aziona
+  (☝; anche con la barra spaziatrice).
+- «Riferimento»: «Origine dell'oggetto» invece di «Origine del componente», che valeva anche per i gruppi.
+- Più veloce nei modelli grandi: cambiando selezione il pannello non scorre più tutto il modello ogni volta, e un
+  Ctrl+Z durante l'animazione ricalcola la scena una volta sola invece che una per ogni oggetto animato.
+
+### Strumento Aziona
+- Sotto il mouse l'oggetto che si aziona ha il riquadro colorato, il nome accanto e il cursore con il simbolo di
+  Aziona: si vede prima di cliccare che cosa partirà.
 
 ### Correzioni
 - **Il quadrato rosso (Stop) della barra non faceva niente**: ora ferma l'animazione come Stop nel menu.

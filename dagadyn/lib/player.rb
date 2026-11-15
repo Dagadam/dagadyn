@@ -145,7 +145,10 @@ module DagaDyn
     # Dati cambiati dal pannello durante la sessione: il riposo resta quello
     # fotografato all'inizio (anche se cambia il pivot); un oggetto azionato
     # resta dov'era arrivato.
-    def self.session_update(e, data)
+    # many: tanti oggetti di fila (dopo un annulla): durata, traiettorie e
+    # pose si rifanno una volta sola alla fine (session_updated), non per
+    # ciascuno; con n oggetti erano n giri su tutti gli n.
+    def self.session_update(e, data, many = false)
       s = @session or return
       it = s[:items][e]
       on = data && data['tracks'].any? { |t| t['on'] }
@@ -162,6 +165,11 @@ module DagaDyn
       elsif on
         item_add(e, data)
       end
+      session_updated unless many
+    end
+
+    def self.session_updated
+      s = @session or return
       recalc_total
       paths_dirty
       apply(s[:t], true)
@@ -259,9 +267,9 @@ module DagaDyn
     def self.recalc_total
       s = @session or return
       list = s[:items].map { |e, it| [e, it[:data]] }
-      s[:total] = timeline_length(list)
-      s[:loops] = loops?(list)
       starts = chain_starts(list)
+      s[:total] = timeline_length(list, starts)
+      s[:loops] = loops?(list, starts)
       s[:items].each { |e, it| it[:static] = starts[e.persistent_id] }
     end
 

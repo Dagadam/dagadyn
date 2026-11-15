@@ -62,6 +62,7 @@ module DagaDyn
 
     # Va chiamata dentro un'operazione. Nessuna traccia: il dizionario sparisce.
     def self.write_data(e, data)
+      anim_dirty
       data = sanitize_data(data)
       if data['tracks'].empty?
         e.attribute_dictionaries.delete(DICT) if e.attribute_dictionaries && e.attribute_dictionary(DICT)
@@ -117,7 +118,10 @@ module DagaDyn
       return if fresh.empty?
       list = section_prune(model, have + fresh.map { |e, _| e.persistent_id })
       own_op(model, true) { model.set_attribute(DICT, SECTIONS_KEY, list.join(',')) }
-      fresh.each { |e, d| session_update(e, d) } if @session && @session[:model] == model
+      if @session && @session[:model] == model
+        fresh.each { |e, d| session_update(e, d, true) }
+        session_updated
+      end
       paths_dirty
       panel_selection_soon
     rescue => dyn_err
@@ -221,15 +225,33 @@ module DagaDyn
     # piani di sezione animati: [[entità, dati], …]. Le istanze dentro una
     # definizione vista più volte compaiono una volta sola: animarle muove
     # tutte le copie del contenitore.
-    def self.animated_instances(model)
-      out = []
+    # Le istanze con il dizionario di DagaDyn. Trovarle vuol dire scorrere
+    # tutte le istanze del modello (decine di migliaia nei modelli grandi),
+    # e il pannello lo chiederebbe a ogni cambio di selezione: l'elenco si
+    # tiene finché il modello non cambia (anim_dirty: ogni operazione,
+    # annulla/ripeti, write_data, documento nuovo). I dati si rileggono
+    # sempre, l'elenco serve solo a non cercare.
+    def self.anim_dirty
+      @anim_cache = nil
+    end
+
+    def self.anim_candidates(model)
+      c = @anim_cache
+      return c[1] if c && c[0].equal?(model) && c[1].all?(&:valid?)
+      list = []
       model.definitions.each do |d|
         next if d.image?
-        d.instances.each do |e|
-          next unless e.attribute_dictionary(DICT)
-          data = read_data(e)
-          out << [e, data] if data && data['tracks'].any? { |t| t['on'] }
-        end
+        d.instances.each { |e| list << e if e.attribute_dictionary(DICT) }
+      end
+      @anim_cache = [model, list]
+      list
+    end
+
+    def self.animated_instances(model)
+      out = []
+      anim_candidates(model).each do |e|
+        data = read_data(e)
+        out << [e, data] if data && data['tracks'].any? { |t| t['on'] }
       end
       section_pids(model).each do |pid|
         e = model.find_entity_by_persistent_id(pid) rescue nil
@@ -290,13 +312,11 @@ module DagaDyn
       memo
     end
 
-    def self.timeline_length(list)
-      starts = chain_starts(list)
+    def self.timeline_length(list, starts = chain_starts(list))
       list.filter_map { |e, data| (s = starts[e.persistent_id]) && s + data_length(data) }.max || 0.0
     end
 
-    def self.loops?(list)
-      starts = chain_starts(list)
+    def self.loops?(list, starts = chain_starts(list))
       list.any? { |e, data| starts[e.persistent_id] && data_loops?(data) }
     end
 

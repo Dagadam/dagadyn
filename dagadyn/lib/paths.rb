@@ -183,14 +183,28 @@ module DagaDyn
     # Strumento Aziona: un clic su un oggetto che parte «quando lo si
     # aziona» lo fa partire (o tornare indietro). Mentre lo strumento è
     # attivo la timeline va avanti da sola (hold): si gioca col modello.
+    # Sotto il mouse, l'oggetto che si aziona ha il riquadro colorato, il
+    # nome accanto e il cursore con il simbolo di Aziona: si vede prima di
+    # cliccare che cosa partirà.
     # ══════════════════════════════════════════════════════════════
     class UseTool
       def activate
+        @hover = nil
         Dyn.use_tool(true)
       end
 
       def deactivate(view)
         Dyn.use_tool(false)
+        @hover = nil
+        view.invalidate
+      end
+
+      def onMouseMove(_flags, x, y, view)
+        h = Dyn.use_hover(view, x, y)
+        tip = h ? Dyn.ent_name(h[0]) : ''
+        view.tooltip = @tip = tip if tip != @tip
+        return if h == @hover
+        @hover = h
         view.invalidate
       end
 
@@ -210,13 +224,72 @@ module DagaDyn
         Sketchup.status_text = best ? Dyn.tf('rt.used', name: best) : Dyn.t('rt.use_none')
       end
 
+      def onSetCursor
+        return false unless @hover
+        cur = Dyn.use_cursor or return false
+        UI.set_cursor(cur)
+        true
+      end
+
       def onCancel(_reason, _view)
         Sketchup.active_model.select_tool(nil)
       end
 
-      def getExtents
-        Geom::BoundingBox.new
+      def draw(view)
+        @hover = nil if @hover && !@hover[0].valid?     # cancellato mentre era sotto il mouse
+        pts = @hover && Dyn.use_box(*@hover) or return
+        view.line_width = 2
+        view.line_stipple = ''
+        view.drawing_color = Sketchup::Color.new(*PATH_RGB)
+        view.draw(GL_LINES, pts)
       end
+
+      def getExtents
+        bb = Geom::BoundingBox.new
+        pts = @hover && @hover[0].valid? && Dyn.use_box(*@hover)
+        bb.add(pts) if pts
+        bb
+      end
+    end
+
+    # [oggetto, contenitori sopra di lui] che si aziona sotto il mouse, o nil
+    def self.use_hover(view, x, y)
+      ph = view.pick_helper
+      ph.do_pick(x, y)
+      ph.count.times do |i|
+        path = ph.path_at(i) or next
+        e = use_targets(path).first or next
+        return [e, path.take_while { |p| !p.equal?(e) }]
+      end
+      nil
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      nil
+    end
+
+    # Spigoli (a coppie, GL_LINES) del riquadro dell'oggetto nella posa
+    # attuale, nel mondo; nil per i piani di sezione.
+    BOX_EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7],
+                 [0, 4], [1, 5], [2, 6], [3, 7]].freeze
+    def self.use_box(e, parents)
+      return nil if !e.valid? || section?(e)
+      tr = parents.select { |p| p.respond_to?(:transformation) && p.valid? }
+                  .map(&:transformation).inject(Geom::Transformation.new, :*) * e.transformation
+      bb = e.definition.bounds
+      return nil if bb.empty?
+      c = (0..7).map { |k| bb.corner(k).transform(tr) }
+      BOX_EDGES.flat_map { |a, b| [c[a], c[b]] }
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      nil
+    end
+
+    def self.use_cursor
+      return @use_cursor if defined?(@use_cursor)
+      png = File.join(PLUGIN_DIR, 'icons', 'use_cursor.png')
+      @use_cursor = File.exist?(png) ? UI.create_cursor(png, 1, 1) : nil
+    rescue
+      @use_cursor = nil
     end
 
     def self.use_tool(on)

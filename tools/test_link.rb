@@ -349,5 +349,76 @@ eq('cambiare un\'impostazione non dà più «invalid overlay»', $model.overlays
 D::AppObs.new.onActivateModel($model)
 eq('attivare lo stesso modello non aggiunge doppioni', [$model.observers.size, $model.overlays.count], [1, 2])
 
+# ── Strumento Aziona: sotto il mouse riquadro, nome e cursore; niente parte prima del clic ──
+use_m = Sketchup::Model.new
+$model = use_m
+D.cmd_stop if D.session
+box   = use_m.add_group([0, 0, 0], [1.m, 1.m, 1.m])                        # contenitore
+lever = use_m.add_group([0, 0, 0], [0.1.m, 0.1.m, 0.5.m], Geom::Transformation.translation(Geom::Vector3d.new(1.m, 0, 0)))
+still = use_m.add_group([0, 0, 0], [1.m, 1.m, 1.m])                        # animato, ma con la timeline
+anim(lever, [tr('rot_x', 0, 45, 1.0)], start: { 'mode' => 'trigger', 'act' => 'toggle' })
+anim(still, [tr('move_x', 0, 1.m, 1.0)])
+box.name = 'Scatola'; lever.name = 'Leva'
+$picks = { [10, 10] => [[box, lever]], [20, 20] => [[still]], [30, 30] => [] }
+tool = D::UseTool.new
+view = use_m.active_view
+tool.activate
+tool.onMouseMove(0, 20, 20, view)
+eq('sopra un oggetto che non si aziona: niente nome, cursore normale', [view.tooltip, tool.onSetCursor], ['', false])
+tool.onMouseMove(0, 10, 10, view)
+eq('sopra la leva (dentro un gruppo): il suo nome', view.tooltip, 'Leva')
+eq('…cursore di Aziona, punta in alto a sinistra', [tool.onSetCursor, $cursor, $cursors.last[1, 2],
+   File.basename($cursors.last[0]), File.exist?($cursors.last[0])], [true, 77, [1, 1], 'use_cursor.png', true])
+eq('…e niente parte finché non si clicca', D.session.nil?, true)
+tool.draw(view)
+mode, pts = view.drawn.last
+xs = pts.map { |p| (p.x / 1.m).round(3) }.uniq.sort
+eq('riquadro: 12 spigoli, nel mondo (x della leva da 1 a 1.1 m)', [mode, pts.size, xs], [GL_LINES, 24, [1.0, 1.1]])
+eq('…e SketchUp lo sa (getExtents)', (tool.getExtents.max.z / 1.m).round(3), 0.5)
+lever.erase!
+view.drawn.clear
+tool.draw(view)
+eq('leva cancellata sotto il mouse: niente riquadro, cursore normale', [view.drawn.size, tool.onSetCursor], [0, false])
+tool.onMouseMove(0, 30, 30, view)
+eq('nel vuoto: niente nome', view.tooltip, '')
+tool.deactivate(view)
+
+# ── Modelli grandi: l'elenco degli animati non si ricerca a ogni selezione ──
+big = Sketchup::Model.new
+$model = big
+D.model_changed(big, true)
+scans = 0
+big.define_singleton_method(:definitions) { scans += 1; super() }
+movers = Array.new(30) { |i| big.add_group([0, 0, 0], [1.m, 1.m, 1.m], Geom::Transformation.translation(Geom::Vector3d.new(i * 2.m, 0, 0))) }
+200.times { big.add_group([0, 0, 0], [1.m, 1.m, 1.m]) }               # arredo fermo
+movers.each { |g| anim(g, [tr('move_z', 0, 1.m, 1.0)]) }
+scans = 0
+big.selection.replace([movers[3]])
+sel = D.selection_info(D.animated_instances(big))
+3.times { D.scene_info }
+eq('selezione e scena: il modello si scorre una volta sola', scans, 1)
+eq('…e i dati sono quelli giusti', [sel['others'].size, D.scene_info['objects'].size], [29, 30])
+D::ModelObs.new.onTransactionCommit(big)                            # una copia, un'eliminazione…
+D.scene_info
+eq('dopo un\'operazione si riscorre', scans, 2)
+movers[0].erase!
+eq('oggetto eliminato: esce subito dall\'elenco', D.scene_info['objects'].size, 29)
+anim(movers[1], [])
+eq('tracce tolte (write_data): esce dall\'elenco', D.scene_info['objects'].size, 28)
+anim(movers[1], [tr('move_z', 0, 1.m, 1.0)])
+
+# Ctrl+Z durante il Play: durata, traiettorie e pose una volta sola, non una per oggetto
+D.cmd_play
+applies = 0
+D.singleton_class.send(:alias_method, :apply_before_test, :apply)
+D.define_singleton_method(:apply) { |*a| applies += 1; apply_before_test(*a) }
+$run_timers = true
+D::ModelObs.new.onTransactionUndo(big)
+$run_timers = false
+D.singleton_class.send(:alias_method, :apply, :apply_before_test)
+eq('annulla con 29 oggetti in moto: pose rifatte una volta', applies, 1)
+eq('…e la sessione li ha ancora tutti', D.session[:items].size, 29)
+D.cmd_stop
+
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

@@ -64,7 +64,7 @@ module DagaDyn
       e.is_a?(Sketchup::Group) ? t('obj.group') : e.definition.name
     end
 
-    def self.selection_info
+    def self.selection_info(list = nil)
       model = Sketchup.active_model
       return { 'kind' => 'none' } unless model
       sel = model.selection.to_a
@@ -73,10 +73,10 @@ module DagaDyn
       return { 'kind' => 'raw', 'n' => sel.size } if anim.empty?
       # Più oggetti: si modifica il primo, e (se si vuole) le modifiche
       # valgono per tutti (save_tracks, others)
-      obj_info(anim.first).merge('multi' => anim.size - 1)
+      obj_info(anim.first, list).merge('multi' => anim.size - 1)
     end
 
-    def self.obj_info(e)
+    def self.obj_info(e, list = nil)
       data = read_data(e) || empty_data
       rest = rest_for(e, data, item_base(e))
       model = e.model
@@ -86,15 +86,15 @@ module DagaDyn
         'shared' => shared, 'rest' => rest[:values], 'data' => data,
         'live' => !!(@session && @session[:items][e]),
         'tags' => model.layers.map { |l| l.name.to_s },
-        'others' => animated_instances(model).reject { |x, _| x == e }
+        'others' => (list || animated_instances(model)).reject { |x, _| x == e }
                                              .map { |x, _| { 'pid' => x.persistent_id, 'name' => ent_name(x) } },
         'overlay' => overlay_ok? }
     end
 
-    def self.scene_info
+    def self.scene_info(list = nil)
       model = Sketchup.active_model
       return { 'objects' => [] } unless model
-      list = animated_instances(model)
+      list ||= animated_instances(model)
       starts = chain_starts(list)
       { 'objects' => list.map do |e, data|
           on = data['tracks'].select { |t| t['on'] }
@@ -103,15 +103,16 @@ module DagaDyn
             'len' => data_length(data), 'loops' => data_loops?(data),
             'mode' => data['start']['mode'], 'at' => starts[e.persistent_id] }
         end,
-        'total' => timeline_length(list) }
+        'total' => timeline_length(list, starts) }
     end
 
     def self.panel_selection
       return unless panel_open?
       m = Sketchup.active_model
       js("setUnit(#{js_json(m ? unit_info(m) : UNITS[4])})")
-      js("setSelection(#{js_json(selection_info)})")
-      js("setScene(#{js_json(scene_info)})")
+      list = m ? animated_instances(m) : []      # una volta sola per selezione e scena
+      js("setSelection(#{js_json(selection_info(list))})")
+      js("setScene(#{js_json(scene_info(list))})")
     rescue => dyn_err
       log_error(__method__, dyn_err)
     end
@@ -167,7 +168,10 @@ module DagaDyn
         @own_op = false
       end
       op_break                       # voce dell'utente: la sessione non vi si accoda
-      written.each { |x, xd| session_update(x, xd) } if @session
+      if @session
+        written.each { |x, xd| session_update(x, xd, true) }
+        session_updated
+      end
       paths_dirty
       cmd_preview(e, d['preview'].to_f) if d['preview'].is_a?(Numeric) && cf('edit_preview')
       js("setScene(#{js_json(scene_info)})")

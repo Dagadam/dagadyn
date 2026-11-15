@@ -26,6 +26,8 @@ tools/test_curves.rb    le curve di Ruby e del pannello devono coincidere (serve
 tools/test_panel.rb     funzioni del pannello in node con un DOM finto (editor delle curve e selezione, timeline)
 tools/test_engine.rb    valori delle tracce nel tempo, partenze, azionati, senza SketchUp
 tools/test_link.rb      il motore in una SketchUp finta (tools/fake_sketchup.rb) e l'aggancio a DagaWASD
+tools/test_live.rb      nel SketchUp vero, dal ponte di DagaWASD: tempi, salvataggio, Ctrl+Z, File › Nuovo
+                        (solo con un modello vuoto e mai modificato aperto; lo lascia vuoto)
 tools/crea_rbz.rb       pacchetto dist/dagadyn-<versione>.rbz (vuole la sezione nel CHANGELOG)
 ```
 

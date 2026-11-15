@@ -15,9 +15,11 @@ module DagaDyn
     class ModelObs < Sketchup::ModelObserver
       def onPreSaveModel(_m);  Dyn.session_suspend; end
       def onPostSaveModel(_m); Dyn.session_resume; end
-      def onTransactionUndo(_m); Dyn.after_undo; end
-      def onTransactionRedo(_m); Dyn.after_undo; end
+      def onTransactionUndo(_m); Dyn.anim_dirty; Dyn.after_undo; end
+      def onTransactionRedo(_m); Dyn.anim_dirty; Dyn.after_undo; end
+      def onTransactionAbort(_m); Dyn.anim_dirty; end
       def onTransactionCommit(_m)
+        Dyn.anim_dirty                      # copie, eliminazioni, importazioni
         return if Dyn.own_op?
         Dyn.op_break
         Dyn.section_adopt_soon
@@ -48,6 +50,7 @@ module DagaDyn
     # agganciati là sono stati staccati: si riagganciano, e la sessione di
     # quel documento finisce.
     def self.model_changed(model, fresh = false)
+      anim_dirty
       if @session && (fresh || @session[:model] != model)
         driver_stop
         @session = nil
@@ -94,7 +97,8 @@ module DagaDyn
             s[:items].delete_if { |e, _| !e.valid? }
             s[:by_pid].delete_if { |_k, it| !s[:items].value?(it) }
             now = animated_instances(s[:model]).to_h
-            (s[:items].keys | now.keys).each { |e| session_update(e, now[e]) }
+            (s[:items].keys | now.keys).each { |e| session_update(e, now[e], true) }
+            session_updated
             s[:model].active_view.invalidate
           end
         rescue => dyn_err
