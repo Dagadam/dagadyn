@@ -241,6 +241,7 @@
   "tip.use": "Använd-verktyget: ett klick startar objekt som startar ”när de används”",
   "tp.bake": "Behåll",
   "tp.bake_h": "Stoppa och behåll objekten som de är nu (Ctrl+Z ångrar)",
+  "tp.empty": "Inga objekt på tidslinjen: de startar när du använder dem",
   "tp.pause": "Paus",
   "tp.play": "Spela",
   "tp.scrub": "Dra för att se varje ögonblick av animationen",

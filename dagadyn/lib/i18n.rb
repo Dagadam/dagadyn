@@ -62,6 +62,13 @@ module DagaDyn
       @lang[key] || key
     end
 
+    # Testo con segnaposto: i testi usano {nome} (come il pannello, che fa
+    # replace('{n}', …)), non %{nome}: format non li sostituirebbe.
+    #   tf('rt.used', name: 'Porta')
+    def self.tf(key, vars)
+      t(key).gsub(/\{(\w+)\}/) { vars.key?($1.to_sym) ? vars[$1.to_sym].to_s : $& }
+    end
+
     # JSON sicuro per execute_script: tutto in \uXXXX, niente problemi di
     # codifica nel passaggio Ruby → CEF.
     def self.js_json(obj)

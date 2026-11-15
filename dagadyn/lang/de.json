@@ -241,6 +241,7 @@
   "tip.use": "Benutzen-Werkzeug: Ein Klick startet die Objekte, die „beim Benutzen“ starten",
   "tp.bake": "Behalten",
   "tp.bake_h": "Stoppen und die Objekte so lassen, wie sie jetzt sind (Strg+Z macht es rückgängig)",
+  "tp.empty": "Keine Objekte auf der Zeitleiste: Sie starten, wenn du sie benutzt",
   "tp.pause": "Pause",
   "tp.play": "Play",
   "tp.scrub": "Ziehen, um jeden Moment der Animation zu sehen",

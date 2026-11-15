@@ -23,6 +23,7 @@ dagadyn/lib/
 dagadyn/panel.html      pannello: telaio di DagaWASD + timeline, tracce, editor delle curve
 dagadyn/lang/           36 lingue (index.json come DagaWASD)
 tools/test_curves.rb    le curve di Ruby e del pannello devono coincidere (serve node)
+tools/test_panel.rb     funzioni del pannello in node con un DOM finto (editor delle curve e selezione, timeline)
 tools/test_engine.rb    valori delle tracce nel tempo, partenze, azionati, senza SketchUp
 tools/test_link.rb      il motore in una SketchUp finta (tools/fake_sketchup.rb) e l'aggancio a DagaWASD
 tools/crea_rbz.rb       pacchetto dist/dagadyn-<versione>.rbz (vuole la sezione nel CHANGELOG)
@@ -40,7 +41,7 @@ Due modi di avere in SketchUp la copia su cui si lavora:
   loader, `installa.bat` non copia niente, per non registrare l'estensione due volte.
 
 ```
-tools\run_tests.bat         tutte le prove: test_engine, test_link, test_curves (vuole node)
+tools\run_tests.bat         tutte le prove: test_engine, test_link, test_curves, test_panel (vuole node)
 ruby tools/crea_rbz.rb      pacchetto in dist\
 ```
 

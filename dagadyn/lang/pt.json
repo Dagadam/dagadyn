@@ -241,6 +241,7 @@
   "tip.use": "Ferramenta Acionar: um clique põe em marcha os objetos que começam «ao serem acionados»",
   "tp.bake": "Manter",
   "tp.bake_h": "Parar e manter os objetos como estão agora (Ctrl+Z para anular)",
+  "tp.empty": "Nenhum objeto na linha do tempo: começam quando os acionas",
   "tp.pause": "Pausa",
   "tp.play": "Reproduzir",
   "tp.scrub": "Arraste para ver qualquer instante da animação",

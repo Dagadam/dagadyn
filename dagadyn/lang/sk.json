@@ -241,6 +241,7 @@
   "tip.use": "Nástroj Použiť: kliknutie spustí objekty, ktoré začínajú „po použití“",
   "tp.bake": "Ponechať",
   "tp.bake_h": "Zastaviť a nechať objekty tak, ako sú teraz (Ctrl+Z vráti späť)",
+  "tp.empty": "Na časovej osi nie sú žiadne objekty: spustia sa, keď ich použiješ",
   "tp.pause": "Pauza",
   "tp.play": "Prehrať",
   "tp.scrub": "Ťahajte a uvidíte ľubovoľný okamih animácie",

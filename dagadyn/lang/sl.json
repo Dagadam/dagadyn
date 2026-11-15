@@ -241,6 +241,7 @@
   "tip.use": "Orodje Uporabi: klik zažene predmete, ki se začnejo »ob uporabi«",
   "tp.bake": "Ohrani",
   "tp.bake_h": "Ustavi in pusti predmete takšne, kot so zdaj (Ctrl+Z razveljavi)",
+  "tp.empty": "Na časovnici ni predmetov: zaženejo se, ko jih uporabiš",
   "tp.pause": "Premor",
   "tp.play": "Predvajaj",
   "tp.scrub": "Povlecite, da vidite poljuben trenutek animacije",

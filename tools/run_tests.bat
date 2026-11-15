@@ -2,13 +2,13 @@
 setlocal
 rem ==================================================================
 rem  Tutte le prove di DagaDyn, senza SketchUp (e' simulata).
-rem  Vuole Ruby 3.2; la prova delle curve vuole anche Node.js.
+rem  Vuole Ruby 3.2; le prove delle curve e del pannello vogliono anche Node.js.
 rem  Alla fine scrive TUTTO OK, oppure quali prove sono fallite.
 rem ==================================================================
 cd /d "%~dp0.."
 
 set "FAIL="
-for %%T in (test_engine test_link test_curves) do (
+for %%T in (test_engine test_link test_curves test_panel) do (
   echo.
   echo  === %%T
   ruby tools\%%T.rb

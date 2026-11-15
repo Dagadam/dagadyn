@@ -241,6 +241,7 @@
   "tip.use": "Įrankis Naudoti: spustelėjimas paleidžia objektus, kurie prasideda „panaudojus“",
   "tp.bake": "Palikti",
   "tp.bake_h": "Sustabdyti ir palikti objektus tokius, kokie jie yra dabar (Ctrl+Z atšaukia)",
+  "tp.empty": "Laiko juostoje nėra objektų: jie pradeda judėti, kai juos panaudoji",
   "tp.pause": "Pauzė",
   "tp.play": "Leisti",
   "tp.scrub": "Vilkite, kad pamatytumėte bet kurią animacijos akimirką",

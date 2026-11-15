@@ -78,11 +78,50 @@ module DagaDyn
       model = e.model
       list = section_pids(model)
       list = on ? (list | [e.persistent_id]) : (list - [e.persistent_id])
-      model.set_attribute(DICT, SECTIONS_KEY, list.join(','))
+      model.set_attribute(DICT, SECTIONS_KEY, section_prune(model, list).join(','))
     end
 
     def self.section_pids(model)
       model.get_attribute(DICT, SECTIONS_KEY, '').to_s.split(',').map(&:to_i).reject(&:zero?)
+    end
+
+    # Via gli id dei piani che non esistono più (eliminati)
+    def self.section_prune(model, list)
+      return list unless model.respond_to?(:find_entity_by_persistent_id)
+      list.select do |pid|
+        x = (model.find_entity_by_persistent_id(pid) rescue nil)
+        x && x.valid? && section?(x)
+      end
+    end
+
+    # Un piano animato copiato (Copia/Incolla, Sposta con Ctrl) porta con sé
+    # i dati, ma non è nell'elenco del modello: non si animerebbe. Dopo ogni
+    # operazione si guardano i piani selezionati (la copia lo è) e quelli
+    # nuovi entrano nell'elenco, in un'operazione trasparente che si accoda
+    # alla copia: annullando la copia sparisce anche questo.
+    def self.section_adopt_soon
+      return if @adopt_timer
+      @adopt_timer = UI.start_timer(0, false) do
+        @adopt_timer = nil
+        section_adopt(Sketchup.active_model)
+      end
+    end
+
+    def self.section_adopt(model)
+      return unless model && model.valid?
+      have  = section_pids(model)
+      fresh = model.selection.select do |e|
+        section?(e) && e.valid? && e.attribute_dictionary(DICT) && !have.include?(e.persistent_id)
+      end
+      fresh = fresh.map { |e| [e, read_data(e)] }.select { |_e, d| d && !d['tracks'].empty? }
+      return if fresh.empty?
+      list = section_prune(model, have + fresh.map { |e, _| e.persistent_id })
+      own_op(model, true) { model.set_attribute(DICT, SECTIONS_KEY, list.join(',')) }
+      fresh.each { |e, d| session_update(e, d) } if @session && @session[:model] == model
+      paths_dirty
+      panel_selection_soon
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
     end
 
     def self.empty_data
@@ -210,29 +249,44 @@ module DagaDyn
     # non è animato: dopo l'attesa); azionato, o in catena dietro un
     # azionato: nil, non è sulla timeline. Catene circolari: nil.
     #   list: [[entità, dati], …] → { persistent_id => secondi | nil }
+    # Senza ricorsione né limite di lunghezza: si risale la catena fino a un
+    # oggetto con la partenza già nota (o a un giro chiuso), poi si ridiscende
+    # sommando durate e attese. Il risultato non dipende dall'ordine di list.
     def self.chain_starts(list)
       by = {}
       list.each { |e, d| by[e.persistent_id] = d }
       memo = {}
-      walk = lambda do |pid, depth|
-        return memo[pid] if memo.key?(pid)
-        return nil if depth > 32
-        st = by[pid]['start'] || default_start
-        r = case st['mode']
-            when 'trigger' then nil
-            when 'after'
-              pred = st['after']
-              if pred != pid && by.key?(pred)
-                ps = walk.call(pred, depth + 1)
-                ps && ps + data_length(by[pred]) + st['wait']
-              else
-                st['wait']
-              end
-            else 0.0
-            end
-        memo[pid] = r
+      by.each_key do |first|
+        next if memo.key?(first)
+        path = []
+        on_path = {}
+        pid = first
+        val = nil
+        loop do
+          if memo.key?(pid) then val = memo[pid]; break end
+          if on_path[pid] then val = nil; break end            # catena circolare
+          st = by[pid]['start'] || default_start
+          pred = st['after']
+          linked = st['mode'] == 'after' && pred != pid && by.key?(pred)
+          unless linked
+            val = case st['mode']
+                  when 'trigger' then nil
+                  when 'after'   then st['wait']                # dopo un oggetto non animato
+                  else 0.0
+                  end
+            memo[pid] = val
+            break
+          end
+          on_path[pid] = true
+          path << pid
+          pid = pred
+        end
+        path.reverse_each do |p|
+          val = val && val + data_length(by[pid]) + (by[p]['start'] || default_start)['wait']
+          memo[p] = val
+          pid = p
+        end
       end
-      by.each_key { |pid| walk.call(pid, 0) }
       memo
     end
 

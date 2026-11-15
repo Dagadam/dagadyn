@@ -246,6 +246,46 @@ module Sketchup
   class AppObserver; end
   class ModelObserver; end
   class SelectionObserver; end
+
+  # Overlay come in SketchUp 2023+: tolto con il suo documento non è più
+  # valido, e toccarlo solleva «invalid overlay».
+  class Overlay
+    attr_reader :overlay_id
+    def initialize(id, _name, description: ''); @overlay_id = id; @valid = true; @enabled = false; end
+    def valid?; @valid; end
+    def kill!; @valid = false; end
+    def enabled?; @enabled; end
+    def enabled=(v); raise 'invalid overlay' unless @valid; @enabled = v; end
+  end
+
+  class OverlaysManager
+    include Enumerable
+    def initialize; @list = []; end
+    def add(o); @list << o; true; end
+    def each(&b); @list.each(&b); end
+    def drop_all!; @list.each(&:kill!); @list.clear; end
+  end
+end
+
+# Osservatori del modello e della selezione (la selezione è un Array)
+class Sketchup::Model
+  def overlays; @overlays ||= Sketchup::OverlaysManager.new; end
+  def observers; @observers ||= []; end
+  def add_observer(o); observers << o; true; end
+  def remove_observer(o); !!observers.delete(o); end
+  # File › Nuovo su Windows: lo stesso oggetto Model, ma osservatori e
+  # Overlay del documento di prima staccati
+  def new_document!
+    observers.clear
+    selection.observers.clear
+    overlays.drop_all!
+  end
+end
+class Array
+  def observers; @observers ||= []; end
+  def add_observer(o); observers << o; true; end
+  def remove_observer(o); !!observers.delete(o); end
+  def add(*e); concat(e.flatten); end
 end
 
 module UI

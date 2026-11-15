@@ -241,6 +241,7 @@
   "tip.use": "Tööriist Kasuta: klõps käivitab objektid, mis algavad „kasutamisel”",
   "tp.bake": "Säilita",
   "tp.bake_h": "Peata ja jäta objektid selliseks, nagu nad praegu on (Ctrl+Z võtab tagasi)",
+  "tp.empty": "Ajajoonel pole objekte: need käivituvad, kui neid kasutad",
   "tp.pause": "Paus",
   "tp.play": "Esita",
   "tp.scrub": "Lohista, et näha animatsiooni mis tahes hetke",

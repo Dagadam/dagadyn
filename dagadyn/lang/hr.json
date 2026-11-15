@@ -241,6 +241,7 @@
   "tip.use": "Alat Aktiviraj: klik pokreće objekte koji počinju „kad se aktiviraju”",
   "tp.bake": "Zadrži",
   "tp.bake_h": "Zaustavi i ostavi objekte kakvi su sada (Ctrl+Z poništava)",
+  "tp.empty": "Nema objekata na vremenskoj crti: pokreću se kad ih aktiviraš",
   "tp.pause": "Pauza",
   "tp.play": "Reproduciraj",
   "tp.scrub": "Povucite da vidite bilo koji trenutak animacije",

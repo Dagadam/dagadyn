@@ -241,6 +241,7 @@
   "tip.use": "Bruk-verktøyet: et klikk starter objektene som starter «når de brukes»",
   "tp.bake": "Behold",
   "tp.bake_h": "Stopp og behold objektene slik de er nå (Ctrl+Z angrer)",
+  "tp.empty": "Ingen objekter på tidslinjen: de starter når du bruker dem",
   "tp.pause": "Pause",
   "tp.play": "Spill",
   "tp.scrub": "Dra for å se ethvert øyeblikk av animasjonen",

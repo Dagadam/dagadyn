@@ -241,6 +241,7 @@
   "tip.use": "Aktivér-værktøjet: et klik starter de objekter, der starter „når de aktiveres“",
   "tp.bake": "Behold",
   "tp.bake_h": "Stop og behold objekterne, som de er nu (Ctrl+Z fortryder)",
+  "tp.empty": "Ingen objekter på tidslinjen: de starter, når du aktiverer dem",
   "tp.pause": "Pause",
   "tp.play": "Afspil",
   "tp.scrub": "Træk for at se ethvert øjeblik af animationen",

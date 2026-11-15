@@ -241,6 +241,7 @@
   "tip.use": "Outil Actionner : un clic démarre les objets qui démarrent « quand on les actionne »",
   "tp.bake": "Garder",
   "tp.bake_h": "Arrêter et garder les objets tels qu'ils sont maintenant (Ctrl+Z pour annuler)",
+  "tp.empty": "Aucun objet sur la timeline : ils démarrent quand tu les actionnes",
   "tp.pause": "Pause",
   "tp.play": "Lecture",
   "tp.scrub": "Faites glisser pour voir n'importe quel instant de l'animation",

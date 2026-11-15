@@ -158,7 +158,8 @@ module DagaDyn
       @overlays ||= {}
       @overlays.delete_if { |m, _| !m.valid? }
       ov, ex = @overlays[model]
-      unless ov && ex
+      # non validi: tolti con il documento di prima (Windows riusa l'oggetto Model)
+      unless ov && ex && ov.valid? && ex.valid?
         # quelli già nel modello (estensione ricaricata) si riusano: lo stesso id non si aggiunge due volte
         have = model.overlays.to_a
         ov = have.find { |o| o.overlay_id == 'dagadyn.paths' } || PathsOverlay.new.tap { |o| model.overlays.add(o) }
@@ -206,7 +207,7 @@ module DagaDyn
             break
           end
         end
-        Sketchup.status_text = best ? format(Dyn.t('rt.used'), name: best) : Dyn.t('rt.use_none')
+        Sketchup.status_text = best ? Dyn.tf('rt.used', name: best) : Dyn.t('rt.use_none')
       end
 
       def onCancel(_reason, _view)

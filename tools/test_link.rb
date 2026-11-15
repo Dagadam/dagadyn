@@ -225,6 +225,129 @@ eq('lingua dei testi: quella di DagaWASD', (D.load_lang; D.instance_variable_get
 W.singleton_class.send(:remove_method, :cf)
 eq('DagaWASD tolta: di nuovo le nostre', [D.ui_shared?, D.panel_cfg['ui_theme']], [false, own])
 D.load_lang
+D.cmd_stop
+
+# ── Segnaposto {nome} nei testi: sostituiti in tutte le lingue ──
+# (prima lo strumento Aziona scriveva alla lettera «azionato "{name}"»)
+langs = Dir[File.join(ROOT, 'dagadyn', 'lang', '*.json')].map { |f| File.basename(f, '.json') } - ['index']
+holes = langs.reject do |code|
+  D.instance_variable_set(:@lang, JSON.parse(File.read(File.join(ROOT, 'dagadyn', 'lang', "#{code}.json"), encoding: 'UTF-8')))
+  s = D.tf('rt.used', name: 'Porta \\1 & co')
+  s.include?('Porta \\1 & co') && !s.include?('{')
+end
+eq('«azionato» col nome dell\'oggetto, in ogni lingua', holes, [])
+D.load_lang
+eq('un segnaposto sconosciuto resta com\'è', D.tf('rt.used', altro: 1).include?('{name}'), true)
+
+# ── Voce di annullamento: dopo un'operazione dell'utente la sessione non vi si accoda ──
+obs = D::ModelObs.new
+D.cmd_seek(0.5)                                     # lampada: colore → operazione della sessione
+$model.start_operation('Sposta'); $model.commit_operation
+obs.onTransactionCommit($model)                     # SketchUp avvisa: operazione non nostra
+$model.ops.clear
+D.cmd_seek(0.7)
+eq('dopo l\'operazione dell\'utente: una voce nuova, non trasparente', $model.ops.first, [D.t('op.anim'), false])
+$model.ops.clear
+D.save_tracks(JSON.generate('pid' => lamp.persistent_id, 'data' => D.read_data(lamp)))
+eq('dopo una modifica dal pannello: lo stesso', $model.ops.first(2), [[D.t('op.edit'), false], [D.t('op.anim'), false]])
+$model.ops.clear
+D.cmd_seek(0.8)
+eq('…e poi di nuovo accodate', $model.ops.map(&:last).uniq, [true])
+D.cmd_stop
+
+# ── Velocità cambiata durante il Play: la timeline non salta ──
+D.cmd_play
+s = D.session
+s[:wall0] = Time.now.to_f - 2.0                      # 2 s di Play a 1×
+D.instance_variable_get(:@cfg)['play_speed'] = 2.0
+D.speed_kept(1.0)
+eq('da 1× a 2× dopo 2 s: si resta a 2 s', D.clock(s, Time.now.to_f), 2.0, 0.05)
+eq('…e da lì si va al doppio', D.clock(s, Time.now.to_f + 1.0), 4.0, 0.05)
+D.instance_variable_get(:@cfg)['play_speed'] = 1.0
+D.cmd_stop
+D.ext_begin(:walk)
+D.ext_tick(1.0)
+D.instance_variable_get(:@cfg)['play_speed'] = 2.0
+D.speed_kept(1.0)
+D.ext_tick(1.0)
+eq('con DagaWASD: stesso istante subito dopo il cambio', D.session[:t], 1.0)
+D.ext_tick(1.5)
+eq('…poi al doppio', D.session[:t], 2.0)
+D.instance_variable_get(:@cfg)['play_speed'] = 1.0
+D.ext_end(:walk)
+
+# ── Materiale originale eliminato durante la sessione: lo Stop ripristina lo stesso ──
+legno = $model.materials.add('Legno')
+crate = $model.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+$model.start_operation('dipingi'); crate.material = legno; $model.commit_operation
+anim(crate, [tr('color', '#ffffff', '#00ff00', 1.0)])
+D.cmd_seek(0.5)
+eq('cassa: materiale temporaneo', crate.material.name.start_with?(D::TEMP_MAT), true)
+$model.materials.remove(legno)                       # Elimina inutilizzati
+D.cmd_stop
+eq('Stop: niente materiale (l\'originale non c\'è più)', crate.material, nil)
+eq('…e niente materiali temporanei rimasti', $model.materials.count { |m| m.name.start_with?(D::TEMP_MAT) }, 0)
+
+# ── Salvataggio: niente materiali temporanei nel file, nascosti a mano restano tali ──
+D.cmd_seek(1.0)                                      # piattaforma a 2 m, lampada rossa
+$model.start_operation('Sposta')
+plat.transformation = Geom::Transformation.translation(Geom::Vector3d.new(1.m, 0, 0)) * plat.transformation
+chain.hidden = true
+$model.commit_operation
+$allow_free = true
+D.session_suspend
+eq('salvando: nessun materiale temporaneo nel modello', $model.materials.count { |m| m.name.start_with?(D::TEMP_MAT) }, 0)
+eq('salvando: la lampada senza materiale', lamp.material, nil)
+eq('salvando: nascosto a mano resta nascosto', chain.hidden?, true)
+eq('salvando: spostato a mano in pausa = nuovo riposo', org(plat)[0], 1.0)
+D.session_resume
+$allow_free = false
+eq('dopo il salvataggio: di nuovo il materiale temporaneo', lamp.material && lamp.material.name.start_with?(D::TEMP_MAT), true)
+eq('…e la piattaforma dove l\'utente l\'aveva portata', org(plat)[0], 3.0)
+D.cmd_stop
+$model.start_operation('mostra'); chain.hidden = false
+plat.transformation = Geom::Transformation.new; $model.commit_operation
+
+# ── Anteprima di uno stato in catena dietro un azionato ──
+hinge = $model.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+anim(hinge, [tr('move_x', 0, 2.m, 1.0)], start: { 'mode' => 'after', 'after' => door.persistent_id })
+D.cmd_preview(hinge, 1.0)
+eq('anteprima dietro l\'azionato fermo: si vede lo stato', org(hinge)[0], 2.0)
+D.cmd_seek(0.0)
+eq('la timeline riparte: torna ad aspettare l\'azionato', org(hinge)[0], 0.0)
+D.cmd_stop
+
+# ── Piani di sezione copiati ──
+copy = Sketchup::SectionPlane.new(sec.get_plane)
+copy.set_attribute(D::DICT, D::DATA_KEY, sec.get_attribute(D::DICT, D::DATA_KEY))
+$sections << copy
+$model.selection.replace([copy])
+eq('copia non ancora nell\'elenco', D.animated_instances($model).map(&:first).include?(copy), false)
+$model.ops.clear
+D.section_adopt($model)
+eq('copia selezionata: entra nell\'elenco', D.animated_instances($model).map(&:first).include?(copy), true)
+eq('…con un\'operazione trasparente (si annulla con la copia)', $model.ops, [[D.t('op.anim'), true]])
+copy.erase!
+anim(sec, [tr('move_z', 0, 2.m, 1.0)])
+eq('copia eliminata: il suo id esce dall\'elenco', D.section_pids($model).include?(copy.persistent_id), false)
+$model.selection.clear
+
+# ── File › Nuovo su Windows: stesso oggetto Model, osservatori e Overlay staccati ──
+D.observe_model($model)
+ids = ->() { $model.overlays.map(&:overlay_id).sort }
+eq('agganciato: osservatori e due Overlay', [$model.observers.size, $model.selection.observers.size, ids.()],
+   [1, 1, %w[dagadyn.extents dagadyn.paths]])
+D.cmd_seek(0.5)
+$model.new_document!
+eq('dopo Nuovo: Overlay non più validi', D.instance_variable_get(:@overlays)[$model].map(&:valid?), [false, false])
+D::AppObs.new.onNewModel($model)
+eq('riagganciati: un osservatore per tipo', [$model.observers.size, $model.selection.observers.size], [1, 1])
+eq('…e i due Overlay, validi', [ids.(), $model.overlays.all?(&:valid?)], [%w[dagadyn.extents dagadyn.paths], true])
+eq('la sessione del documento di prima è finita', D.session.nil?, true)
+D.overlay_refresh                                    # il caso del registro: impostazione salvata dal pannello
+eq('cambiare un\'impostazione non dà più «invalid overlay»', $model.overlays.all?(&:enabled?), true)
+D::AppObs.new.onActivateModel($model)
+eq('attivare lo stesso modello non aggiunge doppioni', [$model.observers.size, $model.overlays.count], [1, 2])
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

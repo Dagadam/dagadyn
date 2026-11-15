@@ -241,6 +241,7 @@
   "tip.use": "Công cụ Kích hoạt: một cú nhấp khởi động các vật thể bắt đầu “khi được kích hoạt”",
   "tp.bake": "Giữ",
   "tp.bake_h": "Dừng và giữ vật thể như hiện tại (Ctrl+Z để hoàn tác)",
+  "tp.empty": "Không có đối tượng trên dòng thời gian: chúng bắt đầu khi được kích hoạt",
   "tp.pause": "Tạm dừng",
   "tp.play": "Phát",
   "tp.scrub": "Kéo để xem bất kỳ thời điểm nào của hoạt ảnh",

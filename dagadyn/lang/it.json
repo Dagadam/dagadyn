@@ -241,6 +241,7 @@
   "tip.use": "Strumento Aziona: un clic fa partire gli oggetti che partono «quando li si aziona»",
   "tp.bake": "Tieni",
   "tp.bake_h": "Ferma e tiene gli oggetti come sono ora (si annulla con Ctrl+Z)",
+  "tp.empty": "Nessun oggetto sulla timeline: partono quando li azioni",
   "tp.pause": "Pausa",
   "tp.play": "Play",
   "tp.scrub": "Trascina per vedere ogni istante dell'animazione",

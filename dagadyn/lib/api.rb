@@ -30,11 +30,13 @@ module DagaDyn
         end
       end
       driver_stop
+      clear_pins(s)
       shadows_back(s)                      # le ombre le decide chi registra o cammina
       s[:ext]    = owner
       s[:state]  = :playing
       s[:hold]   = true
       s[:ext_t0] = s[:t]
+      s[:ext_el] = 0.0
       panel_transport
       true
     rescue => dyn_err
@@ -45,7 +47,8 @@ module DagaDyn
     def self.ext_tick(elapsed)
       s = @session
       return false unless s && s[:ext] && s[:model].valid?
-      t = s[:ext_t0] + elapsed.to_f * cf('play_speed')
+      s[:ext_el] = elapsed.to_f              # per speed_kept (lib/player.rb)
+      t = s[:ext_t0] + s[:ext_el] * cf('play_speed')
       if !s[:loops] && cf('play_repeat') && s[:total] > 0 && t >= s[:total] && !busy_at?(s, t)
         n = (t / s[:total]).floor
         shift_time(s, n * s[:total])

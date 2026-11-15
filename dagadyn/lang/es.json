@@ -241,6 +241,7 @@
   "tip.use": "Herramienta Accionar: un clic pone en marcha los objetos que empiezan «al accionarlos»",
   "tp.bake": "Conservar",
   "tp.bake_h": "Parar y dejar los objetos como están ahora (Ctrl+Z para deshacer)",
+  "tp.empty": "Ningún objeto en la línea de tiempo: arrancan cuando los accionas",
   "tp.pause": "Pausa",
   "tp.play": "Reproducir",
   "tp.scrub": "Arrastra para ver cualquier instante de la animación",

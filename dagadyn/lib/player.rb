@@ -106,6 +106,15 @@ module DagaDyn
       own_op(model, !first, &blk)
     end
 
+    # Un'operazione non della sessione (dell'utente, di un'altra estensione,
+    # una modifica delle tracce dal pannello): una trasparente si accoderebbe
+    # a lei, e il suo Ctrl+Z annullerebbe anche fotogrammi e ripristino
+    # (materiali temporanei di nuovo nel modello dopo lo Stop). La prossima
+    # operazione della sessione apre una voce sua.
+    def self.op_break
+      @session[:first_op] = true if @session
+    end
+
     # ── Oggetti della sessione ──────────────────────────────────────
     def self.item_add(e, data, base = nil)
       s = @session
@@ -143,10 +152,12 @@ module DagaDyn
       if it
         base = it[:base]
         trig = it[:trig]
+        follow = it[:follow]
         item_remove(s, e, it)
         if on
           nit = item_add(e, data, base)
           nit[:trig] = trig if data['start']['mode'] == 'trigger'
+          nit[:follow] = follow if follow && data['start']['mode'] == 'after'
         end
       elsif on
         item_add(e, data)
@@ -185,7 +196,7 @@ module DagaDyn
       return unless e.valid?
       base = it[:base]
       if it[:temp]
-        e.material = base[:material] if e.material == it[:temp]
+        e.material = live_mat(base[:material]) if e.material == it[:temp]
         s[:model].materials.remove(it[:temp]) if it[:temp].valid?
         it[:temp] = nil
       end
@@ -199,6 +210,12 @@ module DagaDyn
       e.set_plane(base[:plane]) if it[:section] && it[:plane_moved]
       it[:plane_moved] = false
       it[:last_v] = nil
+    end
+
+    # Il materiale di riposo, se esiste ancora: può essere stato eliminato
+    # durante la sessione (Elimina inutilizzati), e rimetterlo solleverebbe.
+    def self.live_mat(m)
+      m && m.valid? ? m : nil
     end
 
     # Spostato da qualcun altro dall'ultimo fotogramma (strumento Sposta
@@ -224,7 +241,8 @@ module DagaDyn
         now.each do |e, it, tr|
           next unless e.valid?
           e.transformation = tr if tr && tr.to_a != it[:base][:tr].to_a
-          base = it[:base][:material] ? it[:base][:material].display_name : 'DagaDyn'
+          bm = live_mat(it[:base][:material])
+          base = bm ? bm.display_name : 'DagaDyn'
           mats = []
           mats << it[:temp] if it[:temp]
           mats.concat(it[:faces][:mats].values) if it[:faces]
@@ -245,7 +263,6 @@ module DagaDyn
       s[:loops] = loops?(list)
       starts = chain_starts(list)
       s[:items].each { |e, it| it[:static] = starts[e.persistent_id] }
-
     end
 
     # ── Tracce pronte per il calcolo ────────────────────────────────
@@ -303,34 +320,52 @@ module DagaDyn
     # ── Partenze e tempo locale ─────────────────────────────────────
     # Istante della timeline in cui l'oggetto parte (nil: non ancora) e in
     # cui finisce il suo primo giro (nil: non si sa ancora, o non finisce).
-    def self.item_start(s, it, depth = 0)
-      return nil if depth > 32
-      st = it[:data]['start']
-      case st['mode']
-      when 'trigger' then nil
-      when 'after'
+    # Chi sta sulla timeline ha la partenza già calcolata (it[:static], da
+    # chain_starts in recalc_total). Per le catene dietro un azionato si
+    # risale fino all'azionato senza ricorsione: nessun limite di lunghezza,
+    # e un giro chiuso dà nil.
+    def self.item_start(s, it)
+      acc  = 0.0
+      seen = {}
+      cur  = it
+      loop do
+        return nil if seen[cur.object_id]
+        seen[cur.object_id] = true
+        return acc + cur[:static] if cur[:static]
+        st = cur[:data]['start']
+        return nil if st['mode'] == 'trigger'
+        return acc if st['mode'] != 'after'
         pred = s[:by_pid][st['after']]
-        return st['wait'] unless pred && !pred.equal?(it)
-        pe = item_end(s, pred, depth + 1)
-        pe && pe + st['wait']
-      else 0.0
+        return acc + st['wait'] unless pred && !pred.equal?(cur)
+        acc += st['wait']
+        if pred[:data]['start']['mode'] == 'trigger'
+          pe = trig_end(pred)
+          return pe && acc + pe
+        end
+        acc += pred[:len]
+        cur = pred
       end
     end
 
-    def self.item_end(s, it, depth = 0)
-      return nil if depth > 32
+    def self.item_end(s, it)
       if it[:data]['start']['mode'] == 'trigger'
-        g = it[:trig] or return nil
-        return g[:at] + it[:len] if g[:act] == 'play'
-        g[:dir] > 0 ? g[:at] + (it[:len] - g[:from]) : nil
+        trig_end(it)
       else
-        st = item_start(s, it, depth + 1)
+        st = item_start(s, it)
         st && st + it[:len]
       end
     end
 
+    # Fine del primo giro di un azionato (nil: fermo, o torna indietro)
+    def self.trig_end(it)
+      g = it[:trig] or return nil
+      return g[:at] + it[:len] if g[:act] == 'play'
+      g[:dir] > 0 ? g[:at] + (it[:len] - g[:from]) : nil
+    end
+
     # Tempo locale: prima della partenza è negativo (stato iniziale).
     def self.item_local(s, it, t)
+      return it[:pin] if it[:pin]            # anteprima di uno stato (cmd_preview)
       if it[:data]['start']['mode'] == 'trigger'
         g = it[:trig] or return 0.0
         return t - g[:at] if g[:act] == 'play'
@@ -339,6 +374,13 @@ module DagaDyn
         x = [x, it[:len]].min unless it[:loops] && g[:dir] > 0
         [x, 0.0].max
       else
+        f = it[:follow]
+        if f                                  # dietro un avanti/indietro (trigger_item)
+          run = [t - f[:start], 0.0].max      # fermo dov'era finché non tocca a lui
+          return [f[:from] - run, 0.0].max if f[:dir] < 0
+          x = f[:from] + run
+          return it[:loops] ? x : [x, it[:len]].min
+        end
         st = item_start(s, it)
         st ? t - st : -1.0
       end
@@ -357,8 +399,13 @@ module DagaDyn
           x = item_local(s, it, t)
           g[:dir] > 0 ? x < it[:len] : (g[:dir] < 0 && x > 0)
         elsif st['mode'] == 'after' && it[:static].nil?
-          stt = item_start(s, it)
-          stt && (it[:loops] || t < stt + it[:len])
+          if (f = it[:follow])
+            x = item_local(s, it, t)
+            f[:dir] > 0 ? (it[:loops] || x < it[:len]) : x > 0
+          else
+            stt = item_start(s, it)
+            stt && (it[:loops] || t < stt + it[:len])
+          end
         else
           false
         end
@@ -368,14 +415,69 @@ module DagaDyn
     # Azionare un oggetto all'istante t della sessione.
     #   play: riparte da capo; toggle: va avanti, alla volta dopo torna
     #   indietro (anche a metà corsa: inverte da dov'è).
+    #   Chi è in catena dietro un avanti/indietro ne segue la direzione
+    #   (leva → ponte levatoio), in tutte e due le direzioni con la regola
+    #   di «dopo un altro oggetto»: resta fermo dov'è finché quello prima
+    #   di lui nella catena non ha finito, aspetta la sua attesa, poi va
+    #   avanti o torna indietro da dove era arrivato.
+    #   follow = { dir, from: dove era, start: quando riparte, end: quando arriva }
     def self.trigger_item(s, it, t)
-      if it[:data]['start']['act'] == 'toggle'
+      clear_pins(s)
+      toggle = it[:data]['start']['act'] == 'toggle'
+      # chi è in catena dietro questo azionato, e dove si trova adesso
+      # (prima di cambiare l'azionato, da cui dipende)
+      chained = s[:items].each_value.filter_map do |x|
+        next if x.equal?(it)
+        link = chain_link(s, x)
+        [x, link[1], item_local(s, x, t)] if link && link[0].equal?(it)
+      end
+      if toggle
         cur = item_local(s, it, t)
         dir = it[:trig] && it[:trig][:dir] > 0 ? -1 : 1
         it[:trig] = { act: 'toggle', at: t, from: cur.clamp(0.0, [it[:len], 0.0].max), dir: dir }
       else
         it[:trig] = { act: 'play', at: t, from: 0.0, dir: 1 }
       end
+      unless toggle
+        chained.each { |x, _d, _l| x.delete(:follow) }
+        return
+      end
+      g = it[:trig]
+      root_end = t + (g[:dir] > 0 ? it[:len] - g[:from] : g[:from])   # quando l'azionato arriva
+      # dal più vicino all'azionato al più lontano: ognuno parte quando arriva chi lo precede
+      chained.sort_by { |_x, d, _l| d }.each do |x, _d, loc|
+        st    = x[:data]['start']
+        pred  = s[:by_pid][st['after']]
+        pend  = pred.equal?(it) ? root_end : pred[:follow][:end]
+        from  = loc.clamp(0.0, [x[:len], 0.0].max)
+        start = pend + st['wait']
+        x[:follow] = { dir: g[:dir], from: from, start: start,
+                       end: start + (g[:dir] > 0 ? x[:len] - from : from) }
+      end
+    end
+
+    # L'azionato da cui dipende un oggetto in catena e quanti anelli li
+    # separano: [azionato, anelli], o nil (nessuno, o giro chiuso).
+    def self.chain_link(s, it)
+      seen  = {}
+      cur   = it
+      depth = 0
+      loop do
+        return nil if seen[cur.object_id]
+        seen[cur.object_id] = true
+        st = cur[:data]['start']
+        return (cur.equal?(it) ? nil : [cur, depth]) if st['mode'] == 'trigger'
+        return nil unless st['mode'] == 'after'
+        pred = s[:by_pid][st['after']]
+        return nil unless pred && !pred.equal?(cur)
+        cur = pred
+        depth += 1
+      end
+    end
+
+    # Le anteprime ferme (cmd_preview) finiscono quando la timeline riparte
+    def self.clear_pins(s)
+      s[:items].each_value { |it| it.delete(:pin) }
     end
 
     # La timeline torna indietro di delta (ripetizione): azionati e catene
@@ -383,7 +485,12 @@ module DagaDyn
     def self.shift_time(s, delta)
       s[:t0]     -= delta
       s[:ext_t0] -= delta
-      s[:items].each_value { |it| it[:trig][:at] -= delta if it[:trig] }
+      s[:items].each_value do |it|
+        it[:trig][:at] -= delta if it[:trig]
+        next unless it[:follow]
+        it[:follow][:start] -= delta
+        it[:follow][:end]   -= delta
+      end
     end
 
     # ── Applicazione ────────────────────────────────────────────────
@@ -535,6 +642,7 @@ module DagaDyn
         shift_time(s, s[:t])
         s[:t] = 0.0
       end
+      clear_pins(s)
       s[:state] = :playing
       s[:t0]    = s[:t]
       s[:wall0] = Time.now.to_f
@@ -576,6 +684,7 @@ module DagaDyn
         return
       end
       t = t.to_f.clamp(0.0, [s[:total], 0.0].max)
+      clear_pins(s)
       s[:t] = t
       if s[:state] == :playing
         s[:t0] = t
@@ -593,11 +702,18 @@ module DagaDyn
       s = session_start or return
       it = s[:items][e] or return
       cmd_pause if s[:state] == :playing
+      clear_pins(s)
       st = item_start(s, it)
-      if st && it[:data]['start']['mode'] != 'trigger'
-        s[:t] = [st + local.to_f, 0.0].max
+      local = local.to_f.clamp(0.0, [it[:len], 0.0].max)
+      if it[:data]['start']['mode'] == 'trigger'
+        it[:trig] = { act: 'toggle', at: s[:t], from: local, dir: 0 }
+      elsif st
+        s[:t] = [st + local, 0.0].max
       else
-        it[:trig] = { act: 'toggle', at: s[:t], from: local.to_f.clamp(0.0, [it[:len], 0.0].max), dir: 0 }
+        # in catena dietro un azionato non ancora partito (o in un giro
+        # chiuso): non ha un istante sulla timeline, resta fermo lì
+        # finché non si riparte (clear_pins)
+        it[:pin] = local
       end
       apply(s[:t], true)
       s[:model].active_view.invalidate
@@ -612,6 +728,22 @@ module DagaDyn
 
     def self.clock(s, now)
       s[:t0] + (now - s[:wall0]) * cf('play_speed')
+    end
+
+    # Velocità cambiata (pannello, importazione): il tempo fin qui resta
+    # quello corso alla velocità di prima, cambia solo da adesso in poi.
+    # Senza, t = t0 + trascorso × velocità salterebbe avanti o indietro.
+    def self.speed_kept(old)
+      s = @session or return
+      now_speed = cf('play_speed')
+      return if old.nil? || now_speed == old
+      if s[:ext]
+        s[:ext_t0] += s[:ext_el].to_f * (old - now_speed)
+      elsif s[:state] == :playing
+        now = Time.now.to_f
+        s[:t0] += (now - s[:wall0]) * old
+        s[:wall0] = now
+      end
     end
 
     # Fine della timeline: ricomincia (ripetizione) o si ferma. Con un
@@ -723,21 +855,38 @@ module DagaDyn
 
     # ── Salvataggio ────────────────────────────────────────────────
     # Prima di salvare: tutto a riposo; dopo: si riprende da dove si era.
-    # Qui SketchUp sta già salvando: niente operazioni, solo i valori.
+    # Qui SketchUp sta già salvando: niente operazioni, solo i valori. I
+    # materiali temporanei si tolgono del tutto (nel file non devono finire
+    # nemmeno nell'elenco dei materiali) e si rifanno dopo. Visibilità e tag
+    # si rimettono solo se una traccia li anima: un oggetto nascosto a mano
+    # durante la sessione resta nascosto.
     def self.session_suspend
       s = @session or return
       s[:suspended] = true
+      model = s[:model]
       s[:items].each do |e, it|
         next unless e.valid?
         base = it[:base]
-        place(e, base[:tr]) if it[:last_tr] && !it[:section]
-        e.material = base[:material] if it[:temp]
-        it[:faces][:list].each { |f, fm, bm| (f.material = fm if fm; f.back_material = bm if bm) if f.valid? } if it[:faces]
-        e.hidden = base[:hidden] if e.hidden? != base[:hidden]
-        e.layer = base[:layer] if base[:layer] && base[:layer].valid? && e.layer != base[:layer]
+        props = it[:tracks].map { |tr| tr[:prop] }
+        if it[:last_tr] && !it[:section]
+          item_rebase(e, it)                 # spostato a mano in pausa: è il nuovo riposo
+          place(e, it[:base][:tr])
+          base = it[:base]
+        end
+        if it[:temp]
+          e.material = live_mat(base[:material]) if e.material == it[:temp]
+          model.materials.remove(it[:temp]) if it[:temp].valid?
+          it[:temp] = nil
+        end
+        if it[:faces]
+          faces_restore(model, it[:faces])
+          it[:faces] = nil
+        end
+        e.hidden = base[:hidden] if props.include?('visible') && e.hidden? != base[:hidden]
+        e.layer = base[:layer] if props.include?('tag') && base[:layer] && base[:layer].valid? && e.layer != base[:layer]
         e.set_plane(base[:plane]) if it[:section] && it[:plane_moved]
       end
-      s[:model].shadow_info['DisplayShadows'] = true if s[:shadows]
+      model.shadow_info['DisplayShadows'] = true if s[:shadows]
     rescue => dyn_err
       log_error(__method__, dyn_err)
     end
@@ -747,15 +896,7 @@ module DagaDyn
       return unless s.delete(:suspended)
       s[:items].each do |e, it|
         next unless e.valid?
-        e.material = it[:temp] if it[:temp] && it[:temp].valid?
-        if it[:faces]
-          mats = it[:faces][:mats]
-          it[:faces][:list].each do |f, fm, bm|
-            next unless f.valid?
-            f.material = mats[fm] if fm && mats[fm]
-            f.back_material = mats[bm] if bm && mats[bm]
-          end
-        end
+        item_material(s, e, it)              # materiali temporanei di nuovo
         it[:last_tr] = nil
         it[:last_v]  = nil
       end

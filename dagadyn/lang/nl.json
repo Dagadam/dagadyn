@@ -241,6 +241,7 @@
   "tip.use": "Gereedschap Bedienen: een klik start de objecten die „bij bedienen” starten",
   "tp.bake": "Houden",
   "tp.bake_h": "Stoppen en de objecten laten zoals ze nu zijn (Ctrl+Z maakt het ongedaan)",
+  "tp.empty": "Geen objecten op de tijdlijn: ze starten wanneer je ze bedient",
   "tp.pause": "Pauze",
   "tp.play": "Afspelen",
   "tp.scrub": "Sleep om elk moment van de animatie te zien",

@@ -241,6 +241,7 @@
   "tip.use": "Működtetés eszköz: egy kattintás elindítja a „működtetéskor” induló objektumokat",
   "tp.bake": "Megtartás",
   "tp.bake_h": "Leállítás, és az objektumok maradnak, ahogy most vannak (Ctrl+Z visszavonja)",
+  "tp.empty": "Nincs objektum az idővonalon: működtetéskor indulnak",
   "tp.pause": "Szünet",
   "tp.play": "Lejátszás",
   "tp.scrub": "Húzza az animáció bármely pillanatának megtekintéséhez",

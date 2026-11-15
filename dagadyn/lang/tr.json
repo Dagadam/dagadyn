@@ -241,6 +241,7 @@
   "tip.use": "Kullan aracı: bir tık, “kullanılınca” başlayan nesneleri başlatır",
   "tp.bake": "Koru",
   "tp.bake_h": "Durdur ve nesneleri şu anki halleriyle bırak (geri almak için Ctrl+Z)",
+  "tp.empty": "Zaman çizelgesinde nesne yok: kullanınca başlarlar",
   "tp.pause": "Duraklat",
   "tp.play": "Oynat",
   "tp.scrub": "Animasyonun herhangi bir anını görmek için sürükleyin",

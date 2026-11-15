@@ -241,6 +241,7 @@
   "tip.use": "Narzędzie Użyj: kliknięcie uruchamia obiekty, które startują „po użyciu”",
   "tp.bake": "Zachowaj",
   "tp.bake_h": "Zatrzymaj i zostaw obiekty takie, jakie są teraz (Ctrl+Z cofa)",
+  "tp.empty": "Brak obiektów na osi czasu: ruszają, gdy ich użyjesz",
   "tp.pause": "Pauza",
   "tp.play": "Odtwórz",
   "tp.scrub": "Przeciągnij, aby zobaczyć dowolną chwilę animacji",

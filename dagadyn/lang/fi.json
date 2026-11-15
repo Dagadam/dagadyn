@@ -241,6 +241,7 @@
   "tip.use": "Käytä-työkalu: napsautus käynnistää kohteet, jotka alkavat ”käytettäessä”",
   "tp.bake": "Säilytä",
   "tp.bake_h": "Pysäytä ja jätä kohteet sellaisiksi kuin ne nyt ovat (Ctrl+Z kumoaa)",
+  "tp.empty": "Aikajanalla ei ole kohteita: ne käynnistyvät, kun käytät niitä",
   "tp.pause": "Tauko",
   "tp.play": "Toista",
   "tp.scrub": "Vedä nähdäksesi animaation minkä tahansa hetken",

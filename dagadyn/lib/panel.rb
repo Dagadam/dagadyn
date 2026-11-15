@@ -166,6 +166,7 @@ module DagaDyn
       ensure
         @own_op = false
       end
+      op_break                       # voce dell'utente: la sessione non vi si accoda
       written.each { |x, xd| session_update(x, xd) } if @session
       paths_dirty
       cmd_preview(e, d['preview'].to_f) if d['preview'].is_a?(Numeric) && cf('edit_preview')
@@ -281,11 +282,13 @@ module DagaDyn
       rescue JSON::ParserError, EncodingError
         nil
       end
+      speed = cf('play_speed')
       if import_values(data).zero?
         UI.messagebox(t('bk.bad'))
         return
       end
       sanitize_cfg
+      speed_kept(speed)
       save_cfg
       push_panel_state
       js("saveNow(); flashStatus(#{js_json(t('bk.imported'))})")
@@ -323,8 +326,10 @@ module DagaDyn
       cb.call('request_settings') { |_| push_panel_state }
       cb.call('save_settings') do |json|
         shared = ui_shared? ? SHARED_UI : []
+        speed = cf('play_speed')
         @cfg.merge!(JSON.parse(json).select { |k, _| DEFAULT.key?(k) && !shared.include?(k) })
         sanitize_cfg
+        speed_kept(speed)
         save_cfg
         overlay_refresh
       end

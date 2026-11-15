@@ -241,6 +241,7 @@
   "tip.use": "Alat Gunakan: satu klik menjalankan objek yang mulai “saat digunakan”",
   "tp.bake": "Pertahankan",
   "tp.bake_h": "Hentikan dan biarkan objek seperti sekarang (Ctrl+Z untuk membatalkan)",
+  "tp.empty": "Tidak ada objek di linimasa: objek mulai saat kamu menggunakannya",
   "tp.pause": "Jeda",
   "tp.play": "Putar",
   "tp.scrub": "Seret untuk melihat saat mana pun dalam animasi",

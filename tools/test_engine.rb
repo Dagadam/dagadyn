@@ -152,6 +152,76 @@ eq('…terzo clic: di nuovo avanti', D.item_local(S, tg2, 10.0), 1.0)
 D.shift_time(S, 5.0)
 eq('ripetizione della timeline: l\'azionato non salta', D.item_local(S, tg2, 5.0), 1.0)
 
+# ── Catene lunghe: nessun limite di lunghezza, nessuna dipendenza dall'ordine
+# (prima: dal 18° oggetto in poi non partiva più, e in ordine inverso la
+# catena intera risultava fuori dalla timeline)
+long = (1..40).map { |i| i == 1 ? obj(1001, dur: 1.0) : obj(1000 + i, 'after', after: 999 + i, dur: 1.0) }
+eq('catena di 40: il 40° parte a 39 s', D.chain_starts(long)[1040], 39.0)
+eq('…anche con gli oggetti in ordine inverso', D.chain_starts(long.reverse)[1040], 39.0)
+eq('…e mescolati', D.chain_starts(long.shuffle(random: Random.new(7)))[1020], 19.0)
+SL = { items: {}, by_pid: {} }
+long.each { |pr| it = item(pr); SL[:items][pr[0]] = it; SL[:by_pid][pr[0].persistent_id] = it }
+eq('in sessione (senza partenze calcolate): il 18° parte', D.item_start(SL, SL[:by_pid][1018]), 17.0)
+eq('…il 40° pure', D.item_start(SL, SL[:by_pid][1040]), 39.0)
+eq('…e ha il suo tempo locale', D.item_local(SL, SL[:by_pid][1040], 39.5), 0.5)
+SL[:items].each { |e, it| it[:static] = D.chain_starts(long)[e.persistent_id] }
+eq('con le partenze calcolate: lo stesso', D.item_start(SL, SL[:by_pid][1040]), 39.0)
+
+# Catena di 25 dietro un azionato: parte quando l'azionato finisce
+behind = [obj(2001, 'trigger', dur: 2.0)] + (2..25).map { |i| obj(2000 + i, 'after', after: 1999 + i, dur: 2.0) }
+SB = { items: {}, by_pid: {} }
+behind.each { |pr| it = item(pr); it[:static] = nil; SB[:items][pr[0]] = it; SB[:by_pid][pr[0].persistent_id] = it }
+eq('dietro l\'azionato fermo: non parte', D.item_start(SB, SB[:by_pid][2025]).nil? ? 1 : 0, 1)
+D.trigger_item(SB, SB[:by_pid][2001], 10.0)
+eq('azionato a 10 s: il 25° parte a 10 + 2 + 23 × 2', D.item_start(SB, SB[:by_pid][2025]), 58.0)
+cyc = [obj(3001, 'after', after: 3003), obj(3002, 'after', after: 3001), obj(3003, 'after', after: 3002)]
+SC = { items: {}, by_pid: {} }
+cyc.each { |pr| it = item(pr); SC[:items][pr[0]] = it; SC[:by_pid][pr[0].persistent_id] = it }
+eq('giro chiuso in sessione: non parte (e non si blocca)', D.item_start(SC, SC[:by_pid][3002]).nil? ? 1 : 0, 1)
+
+# Anteprima ferma (cmd_preview su chi non ha un istante sulla timeline)
+i25 = SB[:by_pid][2024]
+i25[:pin] = 1.5
+eq('anteprima ferma: tempo locale fissato', D.item_local(SB, i25, 999.0), 1.5)
+D.clear_pins(SB)
+eq('…finché la timeline non riparte', D.item_local(SB, i25, 58.0), 2.0)
+
+# ── Leva e ponte levatoio: in catena dietro un avanti/indietro si segue la direzione
+lev = obj(4001, 'trigger', act: 'toggle', dur: 0.5)
+brg = obj(4002, 'after', after: 4001, wait: 0.5, dur: 4.0)
+gat = obj(4003, 'after', after: 4002, dur: 1.0)            # un terzo in catena dietro il ponte
+SP = { items: {}, by_pid: {}, t0: 0.0, ext_t0: 0.0 }
+[lev, brg, gat].each { |pr| it = item(pr); it[:static] = nil; SP[:items][pr[0]] = it; SP[:by_pid][pr[0].persistent_id] = it }
+il = SP[:by_pid][4001]; ib2 = SP[:by_pid][4002]; ig = SP[:by_pid][4003]
+eq('ponte fermo prima della leva', D.item_local(SP, ib2, 3.0) <= 0 ? 1 : 0, 1)
+D.trigger_item(SP, il, 10.0)                        # leva giù: 0.5 s, poi 0.5 s di attesa, poi il ponte
+eq('ponte: aspetta la leva e l\'attesa', D.item_local(SP, ib2, 10.9) <= 0 ? 1 : 0, 1)
+eq('ponte a metà discesa', D.item_local(SP, ib2, 13.0), 2.0)
+eq('…si sta muovendo', D.busy_at?(SP, 13.0) ? 1 : 0, 1)
+eq('il terzo parte quando il ponte è giù', D.item_local(SP, ig, 15.5), 0.5)
+# Ritorno a corsa finita (prima il ponte risaliva insieme alla leva)
+D.trigger_item(SP, il, 20.0)                        # leva su col ponte giù
+eq('leva su: il ponte resta giù mentre la leva torna', D.item_local(SP, ib2, 20.4), 4.0)
+eq('…e durante l\'attesa', D.item_local(SP, ib2, 20.9), 4.0)
+eq('…poi risale', D.item_local(SP, ib2, 23.0), 2.0)
+eq('…si sta muovendo', D.busy_at?(SP, 23.0) ? 1 : 0, 1)
+eq('il terzo aspetta che il ponte sia su', D.item_local(SP, ig, 24.9), 1.0)
+eq('…poi torna indietro anche lui', D.item_local(SP, ig, 25.5), 0.5)
+eq('ponte in cima', D.item_local(SP, ib2, 30.0), 0.0)
+eq('…tutto fermo', D.busy_at?(SP, 30.0) ? 1 : 0, 0)
+# Ripensamenti a metà corsa
+D.trigger_item(SP, il, 30.0)                        # giù di nuovo: ponte dal 31 al 35
+eq('ponte a metà discesa (di nuovo)', D.item_local(SP, ib2, 33.0), 2.0)
+D.trigger_item(SP, il, 33.0)                        # leva su a metà discesa
+eq('leva su a metà discesa: il ponte si ferma dov\'è', D.item_local(SP, ib2, 33.9), 2.0)
+eq('…risale quando la leva ha finito, dopo l\'attesa', D.item_local(SP, ib2, 35.0), 1.0)
+D.trigger_item(SP, il, 35.0)                        # di nuovo giù a metà salita
+eq('di nuovo giù a metà salita: fermo lì', D.item_local(SP, ib2, 35.9), 1.0)
+eq('…poi riprende la discesa da lì', D.item_local(SP, ib2, 37.0), 2.0)
+eq('…e si ferma in fondo', D.item_local(SP, ib2, 50.0), 4.0)
+D.shift_time(SP, 10.0)
+eq('ripetizione della timeline: il ponte non salta', D.item_local(SP, ib2, 40.0), 4.0)
+
 dd2 = D.sanitize_data('axes' => 'world', 'faces' => true, 'start' => { 'mode' => 'boh', 'wait' => -3 })
 eq('assi del mondo', dd2['axes'], 'world')
 eq('partenza sconosciuta → timeline', dd2['start']['mode'], 'time')

@@ -2,12 +2,40 @@
 
 ## [Prossima versione]
 
+### Novità
+- **In catena dietro un oggetto azionato «avanti/indietro» si segue la sua direzione** (leva → ponte levatoio,
+  pulsante → cancello): in tutte e due le direzioni si parte quando l'azionato ha finito (più l'attesa), e si
+  riprende da dove si era arrivati. Prima al ritorno l'oggetto in catena scattava di colpo allo stato iniziale.
+
+### Pannello
+- In alto non c'è più il secondo tasto Play (faceva lo stesso del Play della timeline): restano guida, registro
+  errori e lo stato (In riproduzione / In pausa / Fermo).
+- Se nessun oggetto parte con la timeline (solo oggetti azionati e catene dietro di loro), al posto della barra e
+  del timer, che non avrebbero niente da mostrare, una riga lo spiega.
+
 ### Correzioni
 - **Il quadrato rosso (Stop) della barra non faceva niente**: ora ferma l'animazione come Stop nel menu.
 - **Ombre giuste durante il movimento**: prima restavano quelle della posizione di riposo (un oggetto abbassato
   lasciava a terra l'ombra lunga e faceva ombra sugli oggetti vicini).
 - **Oggetti e cielo non vengono più tagliati** quando un oggetto animato esce dalla posizione di riposo (più alto,
   spostato): con DagaWASD le nuvole sparivano a ogni ciclo.
+- **Catene lunghe**: in una sequenza «dopo un altro oggetto» dal 18° oggetto in poi non partiva più niente; ora
+  nessun limite, e l'ordine degli oggetti nel modello non conta.
+- **Strumento Aziona**: la barra di stato mostra il nome dell'oggetto azionato invece di «{name}».
+- **Editor delle curve**: se cambi selezione mentre è aperto si chiude, invece di modificare la curva di un altro
+  oggetto (o bloccarsi).
+- **Velocità cambiata durante il Play**: la timeline non salta più avanti o indietro.
+- **Annulla dopo lo Stop**: se durante l'animazione facevi un'operazione tua (Sposta, una modifica delle tracce),
+  il suo Ctrl+Z poteva riportare nel modello i materiali temporanei. Ora l'animazione apre una voce sua.
+- **Anteprima di uno stato** anche per gli oggetti in catena dietro un oggetto azionato.
+- **Piani di sezione copiati** (Copia/Incolla, Sposta con Ctrl): ora si animano come l'originale.
+- **Salvataggio durante l'animazione**: nel file non finiscono più i materiali temporanei, un oggetto nascosto a
+  mano resta nascosto, e uno spostato a mano in pausa resta dove l'hai messo.
+- **Dopo File › Nuovo o File › Apri DagaDyn smetteva di seguire il modello** (Windows riusa lo stesso modello per
+  Ruby, ma stacca ciò che vi era agganciato): niente traiettorie, cielo e oggetti di nuovo tagliati, pannello che
+  non seguiva la selezione, salvataggio senza ritorno a riposo, e «invalid overlay» nel registro cambiando
+  un'impostazione. Ora a ogni documento nuovo o aperto si riaggancia tutto.
+- Un materiale eliminato durante l'animazione (Elimina inutilizzati) non impedisce più il ripristino allo Stop.
 
 ### Con DagaWASD
 - **Lingua e aspetto del pannello sono quelli di DagaWASD**: in Sistema non compaiono Lingua e Aspetto, e se li

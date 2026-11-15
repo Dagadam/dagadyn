@@ -241,6 +241,7 @@
   "tip.use": "Rīks Darbināt: klikšķis iedarbina objektus, kas sākas „darbinot”",
   "tp.bake": "Paturēt",
   "tp.bake_h": "Apturēt un atstāt objektus tādus, kādi tie ir tagad (Ctrl+Z atsauc)",
+  "tp.empty": "Laika joslā nav objektu: tie sāk darboties, kad tos darbini",
   "tp.pause": "Pauze",
   "tp.play": "Atskaņot",
   "tp.scrub": "Velciet, lai redzētu jebkuru animācijas brīdi",

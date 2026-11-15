@@ -241,6 +241,7 @@
   "tip.use": "Use tool: a click starts the objects that start \"when used\"",
   "tp.bake": "Keep",
   "tp.bake_h": "Stop and keep the objects as they are now (undo with Ctrl+Z)",
+  "tp.empty": "No objects on the timeline: they start when you use them",
   "tp.pause": "Pause",
   "tp.play": "Play",
   "tp.scrub": "Drag to see any moment of the animation",

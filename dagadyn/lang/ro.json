@@ -241,6 +241,7 @@
   "tip.use": "Instrumentul Acționare: un clic pornește obiectele care pornesc „la acționare”",
   "tp.bake": "Păstrează",
   "tp.bake_h": "Oprește și lasă obiectele cum sunt acum (Ctrl+Z pentru anulare)",
+  "tp.empty": "Niciun obiect pe cronologie: pornesc când le acționezi",
   "tp.pause": "Pauză",
   "tp.play": "Redare",
   "tp.scrub": "Trageți pentru a vedea orice moment al animației",

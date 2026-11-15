@@ -3,10 +3,13 @@
 module DagaDyn
   module Dyn
 
+    # Nuovo e Apri: documento nuovo, anche quando (Windows) l'oggetto Model
+    # di Ruby è lo stesso di prima. Activate (Mac, più documenti aperti):
+    # uno già agganciato.
     class AppObs < Sketchup::AppObserver
-      def onNewModel(model);      Dyn.model_changed(model); end
-      def onOpenModel(model);     Dyn.model_changed(model); end
-      def onActivateModel(model); Dyn.model_changed(model); end   # Mac: più documenti aperti
+      def onNewModel(model);      Dyn.model_changed(model, true); end
+      def onOpenModel(model);     Dyn.model_changed(model, true); end
+      def onActivateModel(model); Dyn.model_changed(model); end
     end
 
     class ModelObs < Sketchup::ModelObserver
@@ -16,6 +19,8 @@ module DagaDyn
       def onTransactionRedo(_m); Dyn.after_undo; end
       def onTransactionCommit(_m)
         return if Dyn.own_op?
+        Dyn.op_break
+        Dyn.section_adopt_soon
         Dyn.panel_selection_soon
         Dyn.paths_dirty unless Dyn.external?
       end
@@ -38,12 +43,16 @@ module DagaDyn
     # Un altro modello: la sessione del precedente non vale più (il modello
     # è chiuso o non è quello attivo). Materiali temporanei rimasti in un
     # file salvato a metà sessione da un'altra estensione: via.
-    def self.model_changed(model)
-      if @session && @session[:model] != model
+    # fresh: documento nuovo o appena aperto. Su Windows l'oggetto Model può
+    # essere lo stesso del documento di prima, ma osservatori e Overlay
+    # agganciati là sono stati staccati: si riagganciano, e la sessione di
+    # quel documento finisce.
+    def self.model_changed(model, fresh = false)
+      if @session && (fresh || @session[:model] != model)
         driver_stop
         @session = nil
       end
-      observe_model(model)
+      observe_model(model, fresh)
       UI.start_timer(0, false) { purge_temp_materials(model) if model && model.valid? && !@session }
       panel_transport
       panel_selection
@@ -51,10 +60,15 @@ module DagaDyn
       log_error(__method__, dyn_err)
     end
 
-    def self.observe_model(model)
+    def self.observe_model(model, fresh = false)
       return unless model
       @observed.delete_if { |m, _| !m.valid? }
-      return if @observed[model]
+      if (old = @observed[model])
+        return overlay_attach(model) unless fresh
+        mo, so = old                          # quelli del documento di prima: via
+        (model.remove_observer(mo) rescue nil)
+        (model.selection.remove_observer(so) rescue nil)
+      end
       mo = ModelObs.new
       so = SelObs.new
       model.add_observer(mo)
