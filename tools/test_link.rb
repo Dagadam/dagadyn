@@ -372,7 +372,7 @@ eq('sopra un oggetto che non si aziona: niente nome, freccia semplice', [view.to
 tool.onMouseMove(0, 10, 10, view)
 eq('sopra la leva (dentro un gruppo): il suo nome', view.tooltip, 'Leva')
 tool.onSetCursor
-eq('…freccia con il triangolo di Play, punta in alto a sinistra', cur_png.(), ['use_cursor.png', [1, 1], true])
+eq('…il triangolo di Play, che clicca dal centro', cur_png.(), ['use_cursor.png', [14, 16], true])
 eq('…e niente parte finché non si clicca', D.session.nil?, true)
 # La leva si sposta col mouse fermo: al giro dopo del timer non è più lì sotto
 $picks[[10, 10]] = []

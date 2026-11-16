@@ -302,13 +302,14 @@ module DagaDyn
       nil
     end
 
-    # Freccia con il triangolo di Play sopra un oggetto che si aziona, freccia
-    # semplice altrove. La punta (1, 1) è il punto che clicca.
+    # Sopra un oggetto che si aziona il triangolo di Play, che clicca dal suo
+    # centro (14, 16); altrove la freccia, che clicca dalla punta (1, 1).
     def self.use_cursor(on)
       @use_cursors ||= {}
       return @use_cursors[on] if @use_cursors.key?(on)
       png = File.join(PLUGIN_DIR, 'icons', on ? 'use_cursor.png' : 'arrow_cursor.png')
-      @use_cursors[on] = File.exist?(png) ? UI.create_cursor(png, 1, 1) : nil
+      hx, hy = on ? [14, 16] : [1, 1]
+      @use_cursors[on] = File.exist?(png) ? UI.create_cursor(png, hx, hy) : nil
     rescue
       @use_cursors[on] = nil
     end
