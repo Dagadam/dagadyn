@@ -316,6 +316,6 @@ module UI
   def self.start_timer(*_a, &b); b.call if $run_timers && b; 1; end
   def self.stop_timer(*_a); end
   def self.messagebox(*_a); end
-  def self.create_cursor(path, x, y); ($cursors ||= []) << [path, x, y]; 77; end
+  def self.create_cursor(path, x, y); ($cursors ||= []) << [path, x, y]; 76 + $cursors.size; end
   def self.set_cursor(id); $cursor = id; end
 end

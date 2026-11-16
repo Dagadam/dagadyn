@@ -362,14 +362,28 @@ box.name = 'Scatola'; lever.name = 'Leva'
 $picks = { [10, 10] => [[box, lever]], [20, 20] => [[still]], [30, 30] => [] }
 tool = D::UseTool.new
 view = use_m.active_view
+cur_png = ->() { c = $cursors[$cursor - 77]; [File.basename(c[0]), c[1, 2], File.exist?(c[0])] }
 tool.activate
+eq('lo strumento guarda sotto il mouse anche da fermo (timer)', tool.instance_variable_get(:@timer).nil?, false)
 tool.onMouseMove(0, 20, 20, view)
-eq('sopra un oggetto che non si aziona: niente nome, cursore normale', [view.tooltip, tool.onSetCursor], ['', false])
+tool.onSetCursor
+eq('sopra un oggetto che non si aziona: niente nome, freccia semplice', [view.tooltip, cur_png.()],
+   ['', ['arrow_cursor.png', [1, 1], true]])
 tool.onMouseMove(0, 10, 10, view)
 eq('sopra la leva (dentro un gruppo): il suo nome', view.tooltip, 'Leva')
-eq('…cursore di Aziona, punta in alto a sinistra', [tool.onSetCursor, $cursor, $cursors.last[1, 2],
-   File.basename($cursors.last[0]), File.exist?($cursors.last[0])], [true, 77, [1, 1], 'use_cursor.png', true])
+tool.onSetCursor
+eq('…freccia con il triangolo di Play, punta in alto a sinistra', cur_png.(), ['use_cursor.png', [1, 1], true])
 eq('…e niente parte finché non si clicca', D.session.nil?, true)
+# La leva si sposta col mouse fermo: al giro dopo del timer non è più lì sotto
+$picks[[10, 10]] = []
+tool.refresh(view)
+view.drawn&.clear
+tool.draw(view)
+eq('oggetto uscito da sotto il mouse: niente nome, riquadro, freccia semplice',
+   [view.tooltip, (view.drawn || []).size, cur_png.()[0]], ['', 0, 'arrow_cursor.png'])
+$picks[[10, 10]] = [[box, lever]]                                    # e ci torna
+tool.refresh(view)
+eq('…ci torna sotto: di nuovo evidenziato', [view.tooltip, cur_png.()[0]], ['Leva', 'use_cursor.png'])
 tool.draw(view)
 mode, pts = view.drawn.last
 xs = pts.map { |p| (p.x / 1.m).round(3) }.uniq.sort
@@ -378,10 +392,12 @@ eq('…e SketchUp lo sa (getExtents)', (tool.getExtents.max.z / 1.m).round(3), 0
 lever.erase!
 view.drawn.clear
 tool.draw(view)
-eq('leva cancellata sotto il mouse: niente riquadro, cursore normale', [view.drawn.size, tool.onSetCursor], [0, false])
+tool.onSetCursor
+eq('leva cancellata sotto il mouse: niente riquadro, freccia semplice', [view.drawn.size, cur_png.()[0]], [0, 'arrow_cursor.png'])
 tool.onMouseMove(0, 30, 30, view)
 eq('nel vuoto: niente nome', view.tooltip, '')
 tool.deactivate(view)
+eq('chiuso lo strumento, il timer si ferma', tool.instance_variable_get(:@timer), nil)
 
 # ── Modelli grandi: l'elenco degli animati non si ricerca a ogni selezione ──
 big = Sketchup::Model.new

@@ -190,21 +190,40 @@ module DagaDyn
     class UseTool
       def activate
         @hover = nil
+        @at = nil
         Dyn.use_tool(true)
+        # Gli oggetti si muovono anche col mouse fermo: durante l'animazione
+        # si riguarda cosa c'è sotto, o il riquadro resterebbe su un oggetto
+        # che se n'è andato (e mancherebbe su uno che arriva).
+        @timer = UI.start_timer(0.1, true) do
+          view = Sketchup.active_model && Sketchup.active_model.active_view
+          refresh(view) if view && (Dyn.playing? || Dyn.external?)
+        end
       end
 
       def deactivate(view)
+        UI.stop_timer(@timer) if @timer
+        @timer = nil
         Dyn.use_tool(false)
         @hover = nil
         view.invalidate
       end
 
       def onMouseMove(_flags, x, y, view)
-        h = Dyn.use_hover(view, x, y)
+        @at = [x, y]
+        refresh(view)
+      end
+
+      # Cosa si aziona sotto il mouse: riquadro, nome, cursore
+      def refresh(view)
+        return unless @at
+        h = Dyn.use_hover(view, *@at)
         tip = h ? Dyn.ent_name(h[0]) : ''
         view.tooltip = @tip = tip if tip != @tip
         return if h == @hover
         @hover = h
+        cur = Dyn.use_cursor(!h.nil?)
+        UI.set_cursor(cur) if cur
         view.invalidate
       end
 
@@ -225,8 +244,7 @@ module DagaDyn
       end
 
       def onSetCursor
-        return false unless @hover
-        cur = Dyn.use_cursor or return false
+        cur = Dyn.use_cursor(!@hover.nil?) or return false
         UI.set_cursor(cur)
         true
       end
@@ -284,12 +302,15 @@ module DagaDyn
       nil
     end
 
-    def self.use_cursor
-      return @use_cursor if defined?(@use_cursor)
-      png = File.join(PLUGIN_DIR, 'icons', 'use_cursor.png')
-      @use_cursor = File.exist?(png) ? UI.create_cursor(png, 1, 1) : nil
+    # Freccia con il triangolo di Play sopra un oggetto che si aziona, freccia
+    # semplice altrove. La punta (1, 1) è il punto che clicca.
+    def self.use_cursor(on)
+      @use_cursors ||= {}
+      return @use_cursors[on] if @use_cursors.key?(on)
+      png = File.join(PLUGIN_DIR, 'icons', on ? 'use_cursor.png' : 'arrow_cursor.png')
+      @use_cursors[on] = File.exist?(png) ? UI.create_cursor(png, 1, 1) : nil
     rescue
-      @use_cursor = nil
+      @use_cursors[on] = nil
     end
 
     def self.use_tool(on)
