@@ -238,6 +238,7 @@ module DagaDyn
       left = model.materials.select { |m| m.name.start_with?(TEMP_MAT) }
       return if left.empty?
       set = left.to_h { |m| [m, true] }
+      @own_op = true                  # non è una voce dell'utente (op_break)
       model.start_operation('DagaDyn', true, false, true)
       model.definitions.each do |d|
         d.instances.each { |e| e.material = nil if e.material && set[e.material] }
@@ -255,6 +256,8 @@ module DagaDyn
     rescue => dyn_err
       model.abort_operation rescue nil
       log_error(__method__, dyn_err)
+    ensure
+      @own_op = false
     end
 
   end

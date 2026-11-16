@@ -34,7 +34,12 @@
   oggetto (o bloccarsi).
 - **Velocità cambiata durante il Play**: la timeline non salta più avanti o indietro.
 - **Annulla dopo lo Stop**: se durante l'animazione facevi un'operazione tua (Sposta, una modifica delle tracce),
-  il suo Ctrl+Z poteva riportare nel modello i materiali temporanei. Ora l'animazione apre una voce sua.
+  dopo lo Stop un Ctrl+Z riportava nel modello i materiali temporanei (un oggetto restava del colore di metà
+  animazione). Ora l'animazione ha una voce sua, e dopo ogni annulla o ripeti DagaDyn rimette i materiali
+  originali e, fra le voci nate durante l'animazione, il riposo degli oggetti.
+- **Un oggetto azionato a fine timeline tornava indietro**: se la timeline finiva mentre un oggetto azionato (o in
+  catena dietro di lui) si muoveva ancora, alla fine scattava alla posa che aveva quando era finita la timeline
+  (un ponte levatoio restava quasi alzato).
 - **Anteprima di uno stato** anche per gli oggetti in catena dietro un oggetto azionato.
 - **Piani di sezione copiati** (Copia/Incolla, Sposta con Ctrl): ora si animano come l'originale.
 - **Salvataggio durante l'animazione**: nel file non finiscono più i materiali temporanei, un oggetto nascosto a

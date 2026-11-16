@@ -44,7 +44,7 @@
 
 - `installa.bat` 会把源代码复制到找到的每个 SketchUp 的 Plugins 文件夹。
 - `tools\run_tests.bat` 运行测试（使用模拟 SketchUp 的 Ruby；曲线测试还需要 Node.js）。
-- `ruby tools\test_live.rb` 通过 DagaWASD 的桥接在真实的 SketchUp 中测试（需要打开一个空的、从未修改过的模型，结束后保持为空）。
+- `ruby tools\test_live.rb` 通过 DagaWASD 的桥接在真实的 SketchUp 中测试（需要打开一个新模型（*文件 › 新建*），结束后留下一个新模型）。
 - `ruby tools\crea_rbz.rb` 在 `dist\` 中生成安装包。
 - 版本号只在 `dagadyn.rb`（`VERSION`）中；每个版本在 `CHANGELOG.md` 中都有自己的章节。
 - 本 README 有多种语言（`README.md` 为英文，`README.it.md`、`.es`、`.fr`、`.de`、`.pt`、`.nl`、`.sv`、`.pl`、`.cs`、`.ru`、`.ja`、`.ko`、`.zh`）：修改需同步到所有版本。

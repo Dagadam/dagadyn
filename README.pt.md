@@ -89,8 +89,8 @@ extensão é feita por dentro está em [SVILUPPO.md](SVILUPPO.md).
 - `tools\run_tests.bat` executa os testes (Ruby com um SketchUp simulado; o
   teste das curvas precisa também do Node.js).
 - `ruby tools\test_live.rb` testa no SketchUp real, através da ponte do
-  DagaWASD (precisa de um modelo vazio e nunca alterado aberto, e deixa-o
-  vazio).
+  DagaWASD (precisa de um modelo novo aberto, *Ficheiro › Novo*, e deixa um
+  novo).
 - `ruby tools\crea_rbz.rb` cria o pacote em `dist\`.
 - O número da versão está só em `dagadyn.rb` (`VERSION`); cada versão tem a
   sua secção em `CHANGELOG.md`.

@@ -245,6 +245,7 @@ module Sketchup
     end
     def valid?; true; end
     def options; { 'UnitsOptions' => { 'LengthUnit' => 4 } }; end
+    def entities; @entities ||= Entities.new; end         # il livello principale: qui vuoto
     def start_operation(name, _disable_ui = true, _next = false, transparent = false)
       @open_op = [name, transparent]; true
     end

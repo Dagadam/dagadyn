@@ -44,7 +44,7 @@
 
 - `installa.bat`는 찾은 모든 SketchUp의 Plugins 폴더에 소스를 복사합니다.
 - `tools\run_tests.bat`로 테스트를 실행합니다(SketchUp을 흉내 낸 Ruby, 곡선 테스트에는 Node.js도 필요).
-- `ruby tools\test_live.rb`는 DagaWASD의 브리지를 통해 실제 SketchUp에서 테스트합니다(비어 있고 한 번도 수정하지 않은 모델이 열려 있어야 하며, 끝나면 빈 모델로 남깁니다).
+- `ruby tools\test_live.rb`는 DagaWASD의 브리지를 통해 실제 SketchUp에서 테스트합니다(새 모델(*파일 › 새로 만들기*)이 열려 있어야 하며, 끝나면 새 모델로 남깁니다).
 - `ruby tools\crea_rbz.rb`로 `dist\`에 패키지를 만듭니다.
 - 버전 번호는 `dagadyn.rb`(`VERSION`)에만 있고, 버전마다 `CHANGELOG.md`에 절이 있습니다.
 - 이 README는 여러 언어로 되어 있습니다(`README.md`는 영어, `README.it.md`, `.es`, `.fr`, `.de`, `.pt`, `.nl`, `.sv`, `.pl`, `.cs`, `.ru`, `.ja`, `.ko`, `.zh`). 변경은 모두에 반영하세요.

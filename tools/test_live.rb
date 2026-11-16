@@ -5,10 +5,12 @@
 #
 #   ruby tools/test_live.rb
 #
-# Parte solo con un modello VUOTO e mai modificato aperto in SketchUp (File ›
-# Nuovo): non può toccare il lavoro di nessuno. Ci costruisce gli oggetti di
-# prova, li anima, salva in %TEMP%, annulla, fa File › Nuovo due volte e
-# lascia un modello vuoto, come l'ha trovato. Il file di prova si cancella.
+# Parte solo con un modello NUOVO aperto in SketchUp (File › Nuovo): mai
+# salvato, vuoto o con la sola figura del modello di partenza (in SketchUp
+# 2024 «Teddy»), niente di DagaDyn. Non può toccare il lavoro di nessuno. Ci
+# costruisce gli oggetti di prova, li anima, salva in %TEMP%, annulla, fa
+# File › Nuovo due volte e lascia un modello nuovo, come l'ha trovato. Il file
+# di prova si cancella.
 #
 # Il ponte esegue ogni richiesta dentro un'operazione: i comandi che vanno
 # dati come li darebbe l'utente (Play, Aziona, Salva, Annulla, Nuovo) partono
@@ -77,19 +79,21 @@ ping = http(Net::HTTP::Get.new('/ping'))
 abort 'DagaWASD è in modalità FPS: esci (ESC) e rilancia' if ping['fps_active']
 pre = su(<<~RB)
   m = Sketchup.active_model
-  out.({ 'vuoto' => m.entities.size.zero? && m.definitions.size.zero?, 'modificato' => m.modified?,
+  fig = m.entities.all? { |e| e.is_a?(Sketchup::ComponentInstance) && !e.attribute_dictionary('DagaDyn') }
+  out.({ 'nuovo' => m.path.empty? && m.entities.size <= 1 && fig, 'n' => m.entities.size,
          'dagadyn' => defined?(DagaDyn::Dyn) ? true : false,
          'sessione' => defined?(DagaDyn::Dyn) && !DagaDyn::Dyn.session.nil?,
          'occupato' => defined?(DagaDyn::Dyn) && DagaDyn::Dyn.foreign_busy? })
 RB
 abort 'DagaDyn non è caricata in SketchUp' unless pre['dagadyn']
-unless pre['vuoto'] && !pre['modificato']
-  abort 'Serve un modello vuoto e mai modificato: in SketchUp File › Nuovo (salvando quello aperto, ' \
-        'se ti serve), poi rilancia. La prova non tocca un modello che contiene qualcosa.'
+unless pre['nuovo']
+  abort 'Serve un modello nuovo: in SketchUp File › Nuovo (salvando quello aperto, se ti serve), poi ' \
+        'rilancia. La prova non tocca un modello salvato o che contiene qualcosa.'
 end
+N0 = pre['n']                       # entità del modello di partenza (la figura)
 abort 'DagaDyn sta animando: Stop, poi rilancia' if pre['sessione']
 abort 'DagaWASD sta registrando, riproducendo un percorso o esplorando: aspetta che finisca' if pre['occupato']
-puts "SketchUp #{ping['sketchup']}: modello vuoto, si comincia"
+puts "SketchUp #{ping['sketchup']}: modello nuovo, si comincia"
 
 begin
   # ── Gli oggetti di prova ──
@@ -158,20 +162,18 @@ begin
   # ── Salvare durante il Play: nel file lo stato di progetto ──
   later("Sketchup.active_model.save(#{SKP.inspect})")
   sleep 1.0
-  r = su(<<~RB)
-    m = Sketchup.active_model
-    d = m.definitions.load(#{SKP.inspect})
-    g = d.entities.grep(Sketchup::Group).to_h { |x| [x.name, x] }
-    res = { 'stato' => D.transport_state['state'],
-            'scatola_z' => g['Prova·Scatola'].transformation.origin.z.to_m.round(4),
-            'colore_mat' => g['Prova·Colore'].material && g['Prova·Colore'].material.name,
-            'temp_nel_file' => d.entities.grep(Sketchup::Group).count { |x| x.material && x.material.name.start_with?(D::TEMP_MAT) } }
-    m.definitions.remove(d)
-    out.(res)
+  # Il file salvato si guarda dopo File › Nuovo, caricandolo come componente:
+  # nel modello che l'ha scritto SketchUp non lo carica («in se stesso»,
+  # riconosce il modello, non il nome del file). Se ne tiene una copia,
+  # perché prima di Nuovo si risalva.
+  copy = SKP.sub(/\.skp\z/, '_copia.skp')
+  File.binwrite(copy, File.binread(SKP))
+  r = su(<<~'RB')
+    e = $dd_live[:e]
+    out.({ 'stato' => D.transport_state['state'], 'z' => $dd_live[:z].(e['Scatola']) })
   RB
   eq('Salva durante il Play: l\'animazione continua', r['stato'], 'play')
-  eq('…nel file la scatola è a riposo (z = 0)', r['scatola_z'], near(0, 0.001))
-  eq('…e niente materiali temporanei nel file', [r['colore_mat'], r['temp_nel_file']], [nil, 0])
+  eq('…e la scatola resta dov\'era arrivata', r['z'], ->(z) { z > 0.1 })
 
   # ── Un'operazione dell'utente durante il Play, Stop, poi Ctrl+Z ──
   later(<<~'RB')
@@ -181,25 +183,35 @@ begin
     m.commit_operation
   RB
   sleep 0.3
+  look = lambda do
+    su(<<~'RB')
+      m = Sketchup.active_model
+      e = $dd_live[:e]
+      rest = e.keys.reject { |n| n == 'Fermo' }.all? do |n|
+        e[n].transformation.to_a.zip($dd_live[:rest][n]).all? { |a, b| (a - b).abs < 1e-6 }
+      end
+      out.({ 'stato' => D.transport_state['state'], 'riposo' => rest,
+             'fermo_y' => e['Fermo'].transformation.origin.y.to_m.round(4),
+             'temp' => [m.materials.count { |x| x.name.start_with?(D::TEMP_MAT) },
+                        e.values.count { |x| x.material && x.material.name.start_with?(D::TEMP_MAT) }] })
+    RB
+  end
   later('D.cmd_stop')
   sleep 0.3
+  r = look.()
+  eq('Stop: fermo, tutti gli animati a riposo', [r['stato'], r['riposo']], ['stop', true])
+  # Il primo Ctrl+Z annulla la voce «Animazione» nata dopo la mossa dell'utente
   later('Sketchup.undo')
   sleep 0.5
-  r = su(<<~'RB')
-    m = Sketchup.active_model
-    e = $dd_live[:e]
-    rest = e.keys.reject { |n| n == 'Fermo' }.all? do |n|
-      e[n].transformation.to_a.zip($dd_live[:rest][n]).all? { |a, b| (a - b).abs < 1e-6 }
-    end
-    out.({ 'stato' => D.transport_state['state'], 'riposo' => rest,
-           'fermo_y' => e['Fermo'].transformation.origin.y.to_m.round(4),
-           'temp' => m.materials.count { |x| x.name.start_with?(D::TEMP_MAT) },
-           'temp_addosso' => e.values.count { |x| x.material && x.material.name.start_with?(D::TEMP_MAT) } })
-  RB
-  eq('Stop: fermo', r['stato'], 'stop')
-  eq('…tutti gli animati a riposo', r['riposo'], true)
-  eq('Ctrl+Z dopo lo Stop: la mossa dell\'utente si annulla', r['fermo_y'], near(0, 0.001))
-  eq('…senza riportare materiali temporanei', [r['temp'], r['temp_addosso']], [0, 0])
+  r = look.()
+  eq('1° Ctrl+Z (la voce dell\'animazione): niente materiali temporanei', r['temp'], [0, 0])
+  eq('…gli animati restano a riposo', r['riposo'], true)
+  eq('…la mossa dell\'utente c\'è ancora', r['fermo_y'], near(2, 0.001))
+  later('Sketchup.undo')
+  sleep 0.5
+  r = look.()
+  eq('2° Ctrl+Z: la mossa dell\'utente si annulla', r['fermo_y'], near(0, 0.001))
+  eq('…e ancora niente materiali temporanei, tutto a riposo', [r['temp'], r['riposo']], [[0, 0], true])
 
   # ── File › Nuovo: osservatori e Overlay riagganciati (due volte) ──
   2.times do |k|
@@ -207,6 +219,20 @@ begin
     sleep 0.6
     later('Sketchup.file_new')
     sleep 1.5
+    if k.zero?                                       # il file salvato durante il Play
+      r = su(<<~RB)
+        m = Sketchup.active_model
+        d = m.definitions.load(#{copy.inspect})
+        g = d.entities.grep(Sketchup::Group).to_h { |x| [x.name, x] }
+        res = { 'scatola_z' => g['Prova·Scatola'].transformation.origin.z.to_m.round(4),
+                'colore_mat' => g['Prova·Colore'].material && g['Prova·Colore'].material.name,
+                'temp_nel_file' => d.entities.grep(Sketchup::Group).count { |x| x.material && x.material.name.start_with?(D::TEMP_MAT) } }
+        m.definitions.remove(d)
+        out.(res)
+      RB
+      eq('File salvato durante il Play: la scatola è a riposo (z = 0)', r['scatola_z'], near(0, 0.001))
+      eq('…e niente materiali temporanei', [r['colore_mat'], r['temp_nel_file']], [nil, 0])
+    end
     su(<<~'RB')
       m = Sketchup.active_model
       g = m.entities.add_group
@@ -220,10 +246,10 @@ begin
     su('Sketchup.active_model.entities.add_cpoint([0, 0, 0]); nil')   # …un'operazione lo deve buttare
     su('Sketchup.active_model.selection.add($dd_live[:probe]); nil')
     su('Sketchup.active_model.selection.clear; nil')
-    r = su(<<~'RB')
+    r = su(<<~RB)
       m = Sketchup.active_model
       ovs = m.respond_to?(:overlays) ? m.overlays.select { |o| o.overlay_id.to_s.start_with?('dagadyn') } : nil
-      out.({ 'documento' => m.entities.size == 2,
+      out.({ 'documento' => m.entities.size == #{N0 + 2},
              'modello' => D.instance_variable_get(:@anim_cache).nil?,
              'selezione' => D.instance_variable_get(:@path_cache) == {},
              'overlay' => ovs && [ovs.size, ovs.all?(&:valid?)] })
@@ -237,14 +263,14 @@ begin
     sleep 0.5
   end
 ensure
-  # Si lascia un modello vuoto e senza modifiche, come all'inizio
+  # Si lascia un modello nuovo, come all'inizio
   begin
     later("D.cmd_stop if D.session; Sketchup.active_model.save(#{SKP.inspect}); UI.start_timer(0.3, false) { Sketchup.file_new }")
     sleep 1.5
     errs = su('out.($dd_live ? $dd_live[:errs] : [])')
     eq('nessun errore nei comandi', errs, [])
     fin = su('m = Sketchup.active_model; out.([m.entities.size, m.path])')
-    eq('alla fine: modello vuoto e senza titolo', fin, [0, ''])
+    eq('alla fine: modello nuovo e senza titolo', fin, [N0, ''])
   rescue => e
     warn "pulizia: #{e.message}"
     $bad += 1

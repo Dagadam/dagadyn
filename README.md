@@ -87,7 +87,7 @@ is built inside is in [SVILUPPO.md](SVILUPPO.md).
 - `tools\run_tests.bat` runs the tests (Ruby with a simulated SketchUp; the
   curve test also needs Node.js).
 - `ruby tools\test_live.rb` tries it in the real SketchUp through DagaWASD's
-  bridge (it needs an empty, never modified model open, and leaves it empty).
+  bridge (it needs a new model open, *File › New*, and leaves a new one).
 - `ruby tools\crea_rbz.rb` makes the package in `dist\`.
 - The version number lives only in `dagadyn.rb` (`VERSION`); every version
   has its section in `CHANGELOG.md`.

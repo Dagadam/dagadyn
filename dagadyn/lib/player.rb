@@ -60,6 +60,7 @@ module DagaDyn
       return @session if @session && @session[:model] == model
       session_end if @session
       return nil unless model
+      @ended = nil                     # l'annulla dopo lo Stop vale per l'ultima sessione
       @session = { model: model, items: {}, by_pid: {}, state: :paused, t: 0.0, t0: 0.0, wall0: 0.0,
                    first_op: true, panel_at: 0.0, tick: 0, ext: nil, ext_t0: 0.0, hold: false,
                    shadows: false, total: 0.0, loops: false }
@@ -77,8 +78,10 @@ module DagaDyn
       model = s[:model]
       if model && model.valid?
         if keep
+          @ended = nil
           bake_items(s)
         else
+          ended_keep(s)
           back = s[:items].select { |e, it| it[:last_tr] && e.valid? && !it[:section] }.keys
           s[:items].each { |e, it| item_restore(e, it) }
           if s[:shadows] || s[:items].any? { |_e, it| model_touch?(it) } || !back.empty?
@@ -98,11 +101,93 @@ module DagaDyn
       log_error(__method__, dyn_err)
     end
 
+    # ── Annulla dopo lo Stop ───────────────────────────────────────
+    # I materiali temporanei nascono all'inizio della sessione. Se in mezzo
+    # c'è un'operazione dell'utente, ogni stato a cui si torna con Ctrl+Z da
+    # lì in giù li contiene: lo Stop li ha tolti, ma annullare la voce
+    # dell'animazione (o la mossa dell'utente) li rimette, e con loro
+    # visibilità, tag e pose di quel momento. Dopo un annulla o un ripeti
+    # senza sessione si rimette a posto:
+    # - i materiali temporanei, sempre (non sono mai legittimi fuori da una
+    #   sessione): al loro posto l'originale, se si sa qual era;
+    # - riposo, visibilità, tag e piani di sezione degli oggetti dell'ultima
+    #   sessione, solo finché l'annulla resta fra le voci nate durante quella
+    #   sessione (depth > 0): più in giù ci sono stati di prima, dell'utente.
+    def self.ended_keep(s)
+      mats = {}
+      s[:items].each_value do |it|
+        mats[it[:temp].name] = it[:base][:material] if it[:temp] && it[:temp].valid?
+        (it[:faces] ? it[:faces][:mats] : {}).each { |orig, cl| mats[cl.name] = orig if cl.valid? }
+      end
+      @ended = { model: s[:model], items: s[:items].to_a, mats: mats, depth: s[:depth].to_i }
+    end
+
+    # dir: -1 annulla, +1 ripeti, 0 una voce nuova sopra (operazione dell'utente)
+    def self.ended_step(dir)
+      r = @ended or return
+      return @ended = nil unless r[:model].valid?
+      r[:depth] += dir.zero? ? 1 : dir
+      UI.start_timer(0, false) { ended_repair(r) } unless dir.zero?
+    end
+
+    def self.ended_repair(r)
+      model = r[:model]
+      return unless model.valid? && !@session && @ended.equal?(r)
+      temp = model.materials.select { |m| m.name.start_with?(TEMP_MAT) }
+      fix  = r[:depth] > 0 ? r[:items].select { |e, it| e.valid? && rest_off?(e, it) } : []
+      return if temp.empty? && fix.empty?
+      own_op(model, true) do
+        swap = ->(m) { m && m.valid? && m.name.start_with?(TEMP_MAT) ? live_mat(r[:mats][m.name]) : m }
+        unless temp.empty?
+          r[:items].each do |e, _it|
+            next unless e.valid?
+            e.material = swap.(e.material) if e.respond_to?(:material) && e.material
+            next unless e.respond_to?(:definition)
+            e.definition.entities.grep(Sketchup::Face).each do |f|
+              f.material = swap.(f.material) if f.material
+              f.back_material = swap.(f.back_material) if f.back_material
+            end
+          end
+        end
+        fix.each { |e, it| rest_put(e, it) }
+      end
+      purge_temp_materials(model)              # quelli rimasti senza originale
+      model.active_view.invalidate
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+    end
+
+    def self.rest_props(it)
+      it[:tracks].map { |tr| tr[:prop] }
+    end
+
+    def self.rest_off?(e, it)
+      b = it[:base]
+      p = rest_props(it)
+      return true if p.include?('visible') && e.hidden? != b[:hidden]
+      return true if p.include?('tag') && b[:layer] && b[:layer].valid? && e.layer != b[:layer]
+      return e.get_plane.zip(b[:plane]).any? { |x, y| (x - y).abs > 1e-9 } if it[:section]
+      !same_tr?(e.transformation, b[:tr])
+    end
+
+    def self.rest_put(e, it)
+      b = it[:base]
+      p = rest_props(it)
+      e.hidden = b[:hidden] if p.include?('visible') && e.hidden? != b[:hidden]
+      e.layer = b[:layer] if p.include?('tag') && b[:layer] && b[:layer].valid? && e.layer != b[:layer]
+      if it[:section]
+        e.set_plane(b[:plane])
+      elsif !same_tr?(e.transformation, b[:tr])
+        e.transformation = b[:tr]
+      end
+    end
+
     # Le operazioni della sessione: la prima è una voce vera, le altre vi si
     # accodano (trasparenti).
     def self.op_in(s, model, &blk)
       first = s[:first_op]
       s[:first_op] = false
+      s[:depth] = s[:depth].to_i + 1 if first
       own_op(model, !first, &blk)
     end
 
@@ -112,7 +197,12 @@ module DagaDyn
     # (materiali temporanei di nuovo nel modello dopo lo Stop). La prossima
     # operazione della sessione apre una voce sua.
     def self.op_break
-      @session[:first_op] = true if @session
+      if @session
+        @session[:first_op] = true
+        @session[:depth] = @session[:depth].to_i + 1     # una voce dell'utente in mezzo
+      else
+        ended_step(0)
+      end
     end
 
     # ── Oggetti della sessione ──────────────────────────────────────
@@ -772,9 +862,13 @@ module DagaDyn
     def self.advance(now = Time.now.to_f)
       s = @session
       return false unless s && s[:state] == :playing && s[:model].valid?
-      t = timeline_end(s, clock(s, now))
+      t_now = clock(s, now)
+      t = timeline_end(s, t_now)
       unless t
-        apply(s[:total])
+        # Fermi all'istante raggiunto, non alla fine della timeline: un
+        # azionato (e chi gli va dietro) può essere finito dopo, e tornare
+        # a s[:total] lo faceva scattare indietro (il ponte a metà corsa).
+        apply([t_now, s[:total]].max)
         s[:state] = :paused
         shadows_back(s)
         panel_transport

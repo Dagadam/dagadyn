@@ -84,8 +84,8 @@ uvnitř, popisuje [SVILUPPO.md](SVILUPPO.md).
 - `tools\run_tests.bat` spustí testy (Ruby se simulovaným SketchUpem; test
   křivek potřebuje i Node.js).
 - `ruby tools\test_live.rb` testuje ve skutečném SketchUpu přes most
-  DagaWASD (potřebuje otevřený prázdný, nikdy neupravený model a nechá ho
-  prázdný).
+  DagaWASD (potřebuje otevřený nový model, *Soubor › Nový*, a nový i
+  nechá).
 - `ruby tools\crea_rbz.rb` vytvoří balíček v `dist\`.
 - Číslo verze je jen v `dagadyn.rb` (`VERSION`); každá verze má svůj oddíl v
   `CHANGELOG.md`.

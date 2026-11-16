@@ -420,5 +420,75 @@ eq('annulla con 29 oggetti in moto: pose rifatte una volta', applies, 1)
 eq('…e la sessione li ha ancora tutti', D.session[:items].size, 29)
 D.cmd_stop
 
+# ── Fine della timeline con un azionato finito dopo: non si torna indietro ──
+# (trovato da tools/test_live.rb: il ponte si fermava a -6° invece di -80°)
+endm = Sketchup::Model.new
+$model = endm
+D.model_changed(endm, true)
+clock_box = endm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+lev = endm.add_group([0, 0, 0], [0.1.m, 0.1.m, 0.5.m])
+brg = endm.add_group([0, 0, 0], [2.m, 0.2.m, 1.m])
+anim(clock_box, [tr('move_z', 0, 1.m, 2.0)])                             # timeline lunga 2 s
+anim(lev, [tr('rot_x', 0, 60, 0.6)], start: { 'mode' => 'trigger', 'act' => 'toggle' }, pivot: 'min')
+anim(brg, [tr('rot_x', 0, -80, 1.0)], start: { 'mode' => 'after', 'after' => lev.persistent_id, 'wait' => 0.2 }, pivot: 'min')
+ang = ->(e) { a = e.transformation.to_a; (Math.atan2(a[6], a[5]) * 180 / Math::PI).round(2) }
+D.cmd_play
+s = D.session
+w0 = s[:wall0]
+D.advance(w0 + 1.1)
+D.trigger_item(s, s[:items][lev], 1.1)                                   # leva a 1.1 s: ponte da 1.9 a 2.9 s
+eq('a 2.5 s la timeline è finita ma il ponte scende: si va avanti', D.advance(w0 + 2.5), true)
+eq('a 3.5 s tutto fermo: ci si ferma', D.advance(w0 + 3.5), false)
+eq('…con il ponte giù, non tornato a com\'era a 2 s', [ang.(lev), ang.(brg)], [60.0, -80.0])
+eq('…e il tempo dove si è arrivati', D.session[:t], 3.5)
+D.cmd_stop
+
+# ── Ctrl+Z dopo lo Stop, con un'operazione dell'utente durante l'animazione ──
+# (trovato da tools/test_live.rb: annullare rimetteva il materiale temporaneo)
+um = Sketchup::Model.new
+$model = um
+D.model_changed(um, true)
+red = um.materials.add('Rosso')
+paint = um.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+$allow_free = true
+paint.material = red
+$allow_free = false
+mover = um.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+anim(paint, [tr('color', '#ff0000', '#0000ff', 2.0)])
+anim(mover, [tr('move_x', 0, 2.m, 2.0)])
+rest_mover = mover.transformation.to_a
+D.cmd_play
+s = D.session
+D.advance(s[:wall0] + 0.5)
+temp_name = paint.material.name
+um.start_operation('Sposta', true); um.commit_operation          # l'utente fa qualcosa
+D::ModelObs.new.onTransactionCommit(um)
+D.advance(s[:wall0] + 1.0)                                       # la sessione apre una voce sua
+D.cmd_stop
+eq('Stop: materiale originale, nessun temporaneo', [paint.material.name, um.materials.count { |m| m.name.start_with?(D::TEMP_MAT) }], ['Rosso', 0])
+eq('voci nate durante la sessione: animazione, utente, animazione', D.instance_variable_get(:@ended)[:depth], 3)
+# Ctrl+Z della voce dell'animazione: SketchUp rimette com'era a metà
+$allow_free = true
+back = um.materials.add(temp_name)
+paint.material = back
+mover.transformation = Geom::Transformation.translation(Geom::Vector3d.new(1.m, 0, 0))
+$allow_free = false
+$run_timers = true
+D::ModelObs.new.onTransactionUndo(um)
+$run_timers = false
+eq('dopo Ctrl+Z: di nuovo il materiale originale', paint.material.name, 'Rosso')
+eq('…il temporaneo tolto dal modello', um.materials.count { |m| m.name.start_with?(D::TEMP_MAT) }, 0)
+eq('…e l\'oggetto a riposo', mover.transformation.to_a, rest_mover)
+# Due Ctrl+Z ancora: prima dell'inizio della sessione ciò che c'è è dell'utente
+$run_timers = true
+D::ModelObs.new.onTransactionUndo(um)
+D::ModelObs.new.onTransactionUndo(um)
+$allow_free = true
+mover.transformation = Geom::Transformation.translation(Geom::Vector3d.new(5.m, 0, 0))   # uno stato di prima
+$allow_free = false
+D::ModelObs.new.onTransactionUndo(um)
+$run_timers = false
+eq('annullando oltre l\'inizio della sessione non si tocca niente', org(mover)[0], 5.0)
+
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

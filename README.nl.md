@@ -90,7 +90,8 @@ extensie van binnen in elkaar zit, staat in [SVILUPPO.md](SVILUPPO.md).
 - `tools\run_tests.bat` draait de tests (Ruby met een gesimuleerde SketchUp;
   de curvetest heeft ook Node.js nodig).
 - `ruby tools\test_live.rb` test in de echte SketchUp, via de brug van
-  DagaWASD (wil een leeg, nooit gewijzigd model open en laat het leeg achter).
+  DagaWASD (wil een nieuw model open, *Bestand › Nieuw*, en laat een nieuw
+  model achter).
 - `ruby tools\crea_rbz.rb` maakt het pakket in `dist\`.
 - Het versienummer staat alleen in `dagadyn.rb` (`VERSION`); elke versie
   heeft een eigen sectie in `CHANGELOG.md`.

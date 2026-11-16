@@ -88,7 +88,7 @@ Koden, dess kommentarer och ändringsloggen är på italienska; hur tillägget
 - `tools\run_tests.bat` kör testerna (Ruby med ett simulerat SketchUp;
   kurvtestet behöver också Node.js).
 - `ruby tools\test_live.rb` testar i det riktiga SketchUp via DagaWASD:s
-  brygga (kräver en tom, aldrig ändrad modell öppen och lämnar den tom).
+  brygga (kräver en ny modell öppen, *Arkiv › Ny*, och lämnar en ny).
 - `ruby tools\crea_rbz.rb` skapar paketet i `dist\`.
 - Versionsnumret finns bara i `dagadyn.rb` (`VERSION`); varje version har
   sitt avsnitt i `CHANGELOG.md`.

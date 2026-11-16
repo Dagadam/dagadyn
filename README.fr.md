@@ -96,8 +96,8 @@ la construction interne de l'extension est décrite dans
 - `tools\run_tests.bat` lance les tests (Ruby avec un SketchUp simulé ; le
   test des courbes demande aussi Node.js).
 - `ruby tools\test_live.rb` le teste dans le vrai SketchUp, par le pont de
-  DagaWASD (il faut un modèle vide et jamais modifié ouvert ; il le laisse
-  vide).
+  DagaWASD (il faut un nouveau modèle ouvert, *Fichier › Nouveau* ; il en
+  laisse un nouveau).
 - `ruby tools\crea_rbz.rb` crée le paquet dans `dist\`.
 - Le numéro de version se trouve uniquement dans `dagadyn.rb` (`VERSION`) ;
   chaque version a sa section dans `CHANGELOG.md`.

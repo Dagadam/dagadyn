@@ -95,7 +95,8 @@ Erweiterung innen aufgebaut ist, steht in [SVILUPPO.md](SVILUPPO.md).
 - `tools\run_tests.bat` führt die Tests aus (Ruby mit simuliertem SketchUp;
   der Kurventest braucht zusätzlich Node.js).
 - `ruby tools\test_live.rb` testet im echten SketchUp über die Brücke von
-  DagaWASD (braucht ein leeres, nie geändertes Modell und lässt es leer).
+  DagaWASD (braucht ein neues Modell, *Datei › Neu*, und hinterlässt ein
+  neues).
 - `ruby tools\crea_rbz.rb` erstellt das Paket in `dist\`.
 - Die Versionsnummer steht nur in `dagadyn.rb` (`VERSION`); jede Version hat
   ihren Abschnitt in `CHANGELOG.md`.

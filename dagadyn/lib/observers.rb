@@ -15,8 +15,8 @@ module DagaDyn
     class ModelObs < Sketchup::ModelObserver
       def onPreSaveModel(_m);  Dyn.session_suspend; end
       def onPostSaveModel(_m); Dyn.session_resume; end
-      def onTransactionUndo(_m); Dyn.anim_dirty; Dyn.after_undo; end
-      def onTransactionRedo(_m); Dyn.anim_dirty; Dyn.after_undo; end
+      def onTransactionUndo(_m); Dyn.anim_dirty; Dyn.after_undo(-1); end
+      def onTransactionRedo(_m); Dyn.anim_dirty; Dyn.after_undo(1); end
       def onTransactionAbort(_m); Dyn.anim_dirty; end
       def onTransactionCommit(_m)
         Dyn.anim_dirty                      # copie, eliminazioni, importazioni
@@ -85,10 +85,11 @@ module DagaDyn
     # rimesso una trasformazione. Si rileggono i dati e ogni oggetto riparte
     # dal suo riposo. La voce della sessione può essere sparita: la prossima
     # operazione ne apre una nuova invece di accodarsi a quella dell'utente.
-    def self.after_undo
+    def self.after_undo(dir = -1)
       paths_dirty
       panel_selection_soon
-      return unless @session
+      return ended_step(dir) unless @session
+      @session[:depth] = @session[:depth].to_i + dir
       UI.start_timer(0, false) do
         begin
           s = @session
