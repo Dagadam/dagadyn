@@ -27,6 +27,9 @@ które się zapalają, przekroje, które przesuwają się przez budynek.
   oczekiwanie) albo **po użyciu**: kliknięcie narzędziem *Użyj*. Może za
   każdym razem zaczynać od początku albo iść do przodu, a następnym razem
   wracać (drzwi, szuflady).
+- **Łańcuchy, które podążają**: obiekty w łańcuchu za obiektem, który idzie
+  do przodu i wraca, podążają za jego kierunkiem, w obie strony, każdy gdy
+  poprzedni skończy (dźwignia, potem most zwodzony).
 - **Projekt się nie zmienia**: animacje poruszają obiektami, nie dotykając
   modelu. *Stop* przywraca wszystko, a plik zawsze zapisuje stan spoczynku;
   *Zachowaj* zostawia obiekty takie, jakie są teraz (Ctrl+Z cofa).
@@ -37,12 +40,14 @@ które się zapalają, przekroje, które przesuwają się przez budynek.
   każdego stanu (SketchUp 2023 i nowsze).
 - **Podgląd podczas edycji**: po zmianie wartości stanu obiekt pokazuje się
   w tym stanie.
-- **Z [DagaWASD](https://github.com/Dagadam/dagawasd)** obiekty poruszają się
-  też, gdy chodzisz, zwiedzasz, odtwarzasz trasy i eksportujesz filmy (klatka
-  po klatce, w czasie filmu). Ruchome platformy cię przewożą, a klawisz Użyj
-  uruchamia obiekty, które startują po użyciu.
-- Panel w 36 językach, z tymi samymi ustawieniami, motywami i wyglądem co
-  DagaWASD.
+- **Samodzielnie lub z [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn nie
+  potrzebuje niczego więcej. Gdy zainstalowany jest też DagaWASD 1.3.0 lub
+  nowszy, obiekty poruszają się też, gdy chodzisz, zwiedzasz, odtwarzasz
+  trasy i eksportujesz filmy (klatka po klatce, w czasie filmu). Ruchome
+  platformy cię przewożą, a klawisz Użyj uruchamia obiekty, które startują po
+  użyciu.
+- Panel w 36 językach. Gdy DagaWASD jest zainstalowany, panel przejmuje jego
+  język i wygląd.
 - **Dostępność**: zob. [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Wymagania: SketchUp 2023 lub nowszy. Rozwijane i testowane w Windows; na
@@ -60,6 +65,9 @@ Macu jeszcze nie testowane.
 
 Dla obiektów, które startują „po użyciu”, weź narzędzie *Użyj* (pasek albo
 menu) i kliknij obiekt w modelu; Esc kończy narzędzie.
+Pod kursorem obiekt, który ruszy, ma ramkę i swoją nazwę. Jeśli żaden obiekt
+nie startuje z osią czasu, przycisk **▶** zmienia się w **☝**, narzędzie
+*Użyj*.
 
 ## Instalacja
 
@@ -79,6 +87,9 @@ zbudowane w środku, opisuje [SVILUPPO.md](SVILUPPO.md).
   SketchUp.
 - `tools\run_tests.bat` uruchamia testy (Ruby z symulowanym SketchUp; test
   krzywych potrzebuje też Node.js).
+- `ruby tools\test_live.rb` testuje w prawdziwym SketchUp przez most
+  DagaWASD (wymaga otwartego pustego, niezmienianego modelu i zostawia go
+  pustym).
 - `ruby tools\crea_rbz.rb` tworzy pakiet w `dist\`.
 - Numer wersji jest tylko w `dagadyn.rb` (`VERSION`); każda wersja ma swoją
   sekcję w `CHANGELOG.md`.

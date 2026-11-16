@@ -25,6 +25,9 @@ through a building.
   finished (plus a wait), or **when it is used**: click it with the *Use*
   tool. It can start over every time, or go forward and then back the next
   time (doors, drawers).
+- **Chains that follow**: objects chained behind one that goes forward and
+  back follow its direction, both ways, each one starting when the one before
+  has finished (a lever, then the drawbridge).
 - **The project does not change**: animations move the objects without
   touching the model. *Stop* puts everything back, and the file always
   saves the rest state; *Keep* leaves the objects as they are now (Ctrl+Z
@@ -36,12 +39,13 @@ through a building.
   every state (SketchUp 2023 and later).
 - **Preview while editing**: changing the value of a state shows the object
   in that state.
-- **With [DagaWASD](https://github.com/Dagadam/dagawasd)** objects also move
-  while you walk, explore, replay paths and export videos (frame by frame,
-  at the video's time). Moving platforms carry you along, and the Use key
-  starts the objects that start when used.
-- Panel in 36 languages, with the same settings, themes and appearance as
-  DagaWASD.
+- **On its own or with [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn needs nothing
+  else. With DagaWASD 1.3.0 or later installed too, objects also move while
+  you walk, explore, replay paths and export videos (frame by frame, at the
+  video's time). Moving platforms carry you along, and the Use key starts the
+  objects that start when used.
+- Panel in 36 languages. With DagaWASD installed, it follows DagaWASD's
+  language and appearance.
 - **Accessibility**: see [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Requirements: SketchUp 2023 or later. Developed and tested on Windows; on a
@@ -59,6 +63,9 @@ Mac it has not been tested yet.
 
 For objects that start «when used», pick the *Use* tool (toolbar or menu)
 and click the object in the model; Esc leaves the tool.
+Under the mouse, the object that will start is outlined and shows its name.
+When no object starts with the timeline, the **▶** button becomes **☝**, the
+*Use* tool.
 
 ## Installation
 
@@ -79,6 +86,8 @@ is built inside is in [SVILUPPO.md](SVILUPPO.md).
   it finds.
 - `tools\run_tests.bat` runs the tests (Ruby with a simulated SketchUp; the
   curve test also needs Node.js).
+- `ruby tools\test_live.rb` tries it in the real SketchUp through DagaWASD's
+  bridge (it needs an empty, never modified model open, and leaves it empty).
 - `ruby tools\crea_rbz.rb` makes the package in `dist\`.
 - The version number lives only in `dagadyn.rb` (`VERSION`); every version
   has its section in `CHANGELOG.md`.

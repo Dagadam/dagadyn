@@ -11,7 +11,7 @@ require 'extensions.rb'
 module DagaDyn
   module Loader
 
-    VERSION = '0.2.0' unless defined?(VERSION)
+    VERSION = '0.3.0' unless defined?(VERSION)
 
     unless defined?(EXTENSION)
 

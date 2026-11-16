@@ -24,6 +24,9 @@ rozsvěcují, řezy, které procházejí budovou.
 - **Spuštění**: objekt začne s časovou osou, po skončení jiného (plus
   čekání), nebo **po použití**: kliknutím nástrojem *Použít*. Může pokaždé
   začít od začátku, nebo jít dopředu a příště zpět (dveře, zásuvky).
+- **Řetězy, které následují**: objekty v řetězu za objektem, který jde
+  dopředu a zpět, sledují jeho směr, tam i zpátky, každý až skončí předchozí
+  (páka, potom padací most).
 - **Projekt se nemění**: animace pohybují objekty, aniž by sahaly na model.
   *Stop* vše vrátí a soubor vždy ukládá klidový stav; *Ponechat* nechá
   objekty tak, jak jsou teď (Ctrl+Z to vrátí).
@@ -34,12 +37,12 @@ rozsvěcují, řezy, které procházejí budovou.
   každý stav (SketchUp 2023 a novější).
 - **Náhled při úpravách**: při změně hodnoty stavu se objekt ukáže v tomto
   stavu.
-- **S [DagaWASD](https://github.com/Dagadam/dagawasd)** se objekty pohybují
-  i při chůzi, průzkumu, přehrávání tras a exportu videí (snímek po snímku, v
-  čase videa). Pohyblivé plošiny vás vezou a klávesa Použít spouští objekty,
-  které začínají po použití.
-- Panel ve 36 jazycích, se stejným nastavením, motivy a vzhledem jako
-  DagaWASD.
+- **Samostatně nebo s [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn nic
+  dalšího nepotřebuje. S nainstalovaným DagaWASD 1.3.0 nebo novějším se
+  objekty pohybují i při chůzi, průzkumu, přehrávání tras a exportu videí
+  (snímek po snímku, v čase videa). Pohyblivé plošiny vás vezou a klávesa
+  Použít spouští objekty, které začínají po použití.
+- Panel ve 36 jazycích. S nainstalovaným DagaWASD přebírá jeho jazyk a vzhled.
 - **Přístupnost**: viz [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Požadavky: SketchUp 2023 nebo novější. Vyvíjeno a testováno ve Windows; na
@@ -57,6 +60,9 @@ Macu zatím netestováno.
 
 U objektů, které začínají „po použití“, vezměte nástroj *Použít* (panel
 nástrojů nebo nabídka) a klikněte na objekt v modelu; Esc nástroj ukončí.
+Pod myší má objekt, který se spustí, rámeček a své jméno. Pokud s časovou
+osou nezačíná žádný objekt, tlačítko **▶** se změní na **☝**, nástroj
+*Použít*.
 
 ## Instalace
 
@@ -77,6 +83,9 @@ uvnitř, popisuje [SVILUPPO.md](SVILUPPO.md).
   nalezeného SketchUpu.
 - `tools\run_tests.bat` spustí testy (Ruby se simulovaným SketchUpem; test
   křivek potřebuje i Node.js).
+- `ruby tools\test_live.rb` testuje ve skutečném SketchUpu přes most
+  DagaWASD (potřebuje otevřený prázdný, nikdy neupravený model a nechá ho
+  prázdný).
 - `ruby tools\crea_rbz.rb` vytvoří balíček v `dist\`.
 - Číslo verze je jen v `dagadyn.rb` (`VERSION`); každá verze má svůj oddíl v
   `CHANGELOG.md`.

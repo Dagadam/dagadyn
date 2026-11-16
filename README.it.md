@@ -26,6 +26,9 @@ che si accendono, sezioni che attraversano un edificio.
   (più un'attesa), oppure **quando lo si aziona**: un clic con lo strumento
   *Aziona*. Può ripartire ogni volta da capo, o andare avanti e la volta dopo
   indietro (porte, cassetti).
+- **Catene che seguono**: gli oggetti in catena dietro uno che va avanti e
+  indietro ne seguono la direzione, all'andata e al ritorno, ognuno quando il
+  precedente ha finito (una leva, poi il ponte levatoio).
 - **Il progetto non cambia**: le animazioni muovono gli oggetti senza toccare
   il modello. *Stop* rimette tutto a posto e il file salva sempre lo stato di
   riposo; *Tieni* lascia gli oggetti come sono adesso (Ctrl+Z lo annulla).
@@ -36,13 +39,13 @@ che si accendono, sezioni che attraversano un edificio.
   un punto per ogni stato (SketchUp 2023 e successivi).
 - **Anteprima mentre modifichi**: cambiando il valore di uno stato l'oggetto
   si mostra in quello stato.
-- **Con [DagaWASD](https://github.com/Dagadam/dagawasd)** gli oggetti si
+- **Da sola o con [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn non ha
+  bisogno d'altro. Con DagaWASD 1.3.0 o successiva installata, gli oggetti si
   muovono anche mentre cammini, esplori, riproduci i percorsi ed esporti i
   video (fotogramma per fotogramma, al tempo del video). Le piattaforme in
   movimento ti portano con sé e il tasto Aziona fa partire gli oggetti che
   partono quando li si aziona.
-- Pannello in 36 lingue, con le stesse impostazioni, temi e aspetto di
-  DagaWASD.
+- Pannello in 36 lingue. Con DagaWASD installata ne segue lingua e aspetto.
 - **Accessibilità**: vedi [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Requisiti: SketchUp 2023 o successivo. Sviluppata e provata su Windows; su
@@ -63,6 +66,9 @@ Mac non è ancora stata provata.
 Per gli oggetti che partono «quando li si aziona», prendi lo strumento
 *Aziona* (barra o menu) e fai clic sull'oggetto nel modello; Esc esce dallo
 strumento.
+Sotto il mouse l'oggetto che partirà ha un riquadro colorato e il suo nome. Se
+nessun oggetto parte con la timeline, il tasto **▶** diventa **☝**, lo
+strumento *Aziona*.
 
 ## Installazione
 
@@ -84,6 +90,8 @@ l'estensione dentro è in [SVILUPPO.md](SVILUPPO.md).
   che trova.
 - `tools\run_tests.bat` esegue le prove (Ruby con una SketchUp simulata; la
   prova delle curve vuole anche Node.js).
+- `ruby tools\test_live.rb` prova nel SketchUp vero, attraverso il ponte di
+  DagaWASD (vuole aperto un modello vuoto e mai modificato, e lo lascia vuoto).
 - `ruby tools\crea_rbz.rb` fa il pacchetto in `dist\`.
 - Il numero di versione sta solo in `dagadyn.rb` (`VERSION`); ogni versione
   ha la sua sezione in `CHANGELOG.md`.

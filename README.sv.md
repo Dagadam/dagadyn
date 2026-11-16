@@ -27,6 +27,9 @@ snitt som vandrar genom en byggnad.
   (plus en väntan), eller **när det används**: ett klick med verktyget
   *Använd*. Det kan börja om från början varje gång, eller gå framåt och
   nästa gång tillbaka (dörrar, lådor).
+- **Kedjor som följer**: objekt i kedja efter ett som går fram och tillbaka
+  följer dess riktning, åt båda hållen, vart och ett när det föregående är
+  klart (en spak, sedan vindbryggan).
 - **Projektet ändras inte**: animationerna flyttar objekten utan att röra
   modellen. *Stopp* återställer allt och filen sparar alltid viloläget;
   *Behåll* lämnar objekten som de är nu (Ctrl+Z ångrar).
@@ -37,12 +40,13 @@ snitt som vandrar genom en byggnad.
   tillstånd (SketchUp 2023 och senare).
 - **Förhandsvisning vid redigering**: när du ändrar ett tillstånds värde
   visas objektet i det tillståndet.
-- **Med [DagaWASD](https://github.com/Dagadam/dagawasd)** rör sig objekten
-  också medan du går, utforskar, spelar upp banor och exporterar videor
-  (bildruta för bildruta, i videons tid). Rörliga plattformar tar dig med,
-  och Använd-tangenten startar objekten som startar när de används.
-- Panel på 36 språk, med samma inställningar, teman och utseende som
-  DagaWASD.
+- **Ensamt eller med [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn behöver
+  inget annat. Med DagaWASD 1.3.0 eller senare också installerat rör sig
+  objekten också medan du går, utforskar, spelar upp banor och exporterar
+  videor (bildruta för bildruta, i videons tid). Rörliga plattformar tar dig
+  med, och Använd-tangenten startar objekten som startar när de används.
+- Panel på 36 språk. Med DagaWASD installerat följer den dess språk och
+  utseende.
 - **Tillgänglighet**: se [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Krav: SketchUp 2023 eller senare. Utvecklat och testat på Windows; på Mac är
@@ -60,6 +64,9 @@ det ännu inte testat.
 
 För objekt som startar «när de används»: ta verktyget *Använd* (verktygsfält
 eller meny) och klicka på objektet i modellen; Esc lämnar verktyget.
+Under musen får objektet som kommer att starta en ram och sitt namn. Om
+inget objekt startar med tidslinjen blir knappen **▶** en **☝**, verktyget
+*Använd*.
 
 ## Installation
 
@@ -80,6 +87,8 @@ Koden, dess kommentarer och ändringsloggen är på italienska; hur tillägget
   hittar.
 - `tools\run_tests.bat` kör testerna (Ruby med ett simulerat SketchUp;
   kurvtestet behöver också Node.js).
+- `ruby tools\test_live.rb` testar i det riktiga SketchUp via DagaWASD:s
+  brygga (kräver en tom, aldrig ändrad modell öppen och lämnar den tom).
 - `ruby tools\crea_rbz.rb` skapar paketet i `dist\`.
 - Versionsnumret finns bara i `dagadyn.rb` (`VERSION`); varje version har
   sitt avsnitt i `CHANGELOG.md`.

@@ -28,6 +28,9 @@ un bâtiment.
   fini (plus une attente), ou **quand on l'actionne** : un clic avec l'outil
   *Actionner*. Il peut recommencer depuis le début à chaque fois, ou avancer
   puis revenir la fois suivante (portes, tiroirs).
+- **Chaînes qui suivent** : les objets enchaînés derrière un objet qui avance
+  puis revient suivent sa direction, à l'aller comme au retour, chacun quand
+  le précédent a fini (un levier, puis le pont-levis).
 - **Le projet ne change pas** : les animations bougent les objets sans
   toucher au modèle. *Stop* remet tout en place et le fichier enregistre
   toujours l'état de repos ; *Garder* laisse les objets tels qu'ils sont
@@ -40,13 +43,14 @@ un bâtiment.
   point pour chaque état (SketchUp 2023 et suivants).
 - **Aperçu pendant la modification** : en changeant la valeur d'un état,
   l'objet se montre dans cet état.
-- **Avec [DagaWASD](https://github.com/Dagadam/dagawasd)** les objets bougent
-  aussi pendant que vous marchez, explorez, rejouez des parcours et exportez
-  des vidéos (image par image, au temps de la vidéo). Les plateformes mobiles
-  vous emportent et la touche Actionner démarre les objets qui démarrent
-  quand on les actionne.
-- Panneau en 36 langues, avec les mêmes réglages, thèmes et apparence que
-  DagaWASD.
+- **Seule ou avec [DagaWASD](https://github.com/Dagadam/dagawasd)** : DagaDyn n'a
+  besoin de rien d'autre. Avec DagaWASD 1.3.0 ou plus récent installé, les
+  objets bougent aussi pendant que vous marchez, explorez, rejouez des
+  parcours et exportez des vidéos (image par image, au temps de la vidéo). Les
+  plateformes mobiles vous emportent et la touche Actionner démarre les objets
+  qui démarrent quand on les actionne.
+- Panneau en 36 langues. Avec DagaWASD installé, il suit sa langue et son
+  apparence.
 - **Accessibilité** : voir [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Configuration requise : SketchUp 2023 ou plus récent. Développée et testée
@@ -66,6 +70,9 @@ sous Windows ; sur Mac elle n'a pas encore été testée.
 Pour les objets qui démarrent « quand on les actionne », prenez l'outil
 *Actionner* (barre ou menu) et cliquez sur l'objet dans le modèle ; Échap
 quitte l'outil.
+Sous la souris, l'objet qui va démarrer est encadré et affiche son nom. Si
+aucun objet ne démarre avec la timeline, le bouton **▶** devient **☝**,
+l'outil *Actionner*.
 
 ## Installation
 
@@ -88,6 +95,9 @@ la construction interne de l'extension est décrite dans
   SketchUp trouvé.
 - `tools\run_tests.bat` lance les tests (Ruby avec un SketchUp simulé ; le
   test des courbes demande aussi Node.js).
+- `ruby tools\test_live.rb` le teste dans le vrai SketchUp, par le pont de
+  DagaWASD (il faut un modèle vide et jamais modifié ouvert ; il le laisse
+  vide).
 - `ruby tools\crea_rbz.rb` crée le paquet dans `dist\`.
 - Le numéro de version se trouve uniquement dans `dagadyn.rb` (`VERSION`) ;
   chaque version a sa section dans `CHANGELOG.md`.

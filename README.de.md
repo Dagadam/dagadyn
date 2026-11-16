@@ -29,6 +29,9 @@ Gebäude wandern.
   fertig ist (plus Wartezeit), oder **beim Benutzen**: ein Klick mit dem
   Werkzeug *Benutzen*. Es kann jedes Mal von vorn beginnen oder vorwärts
   laufen und beim nächsten Mal zurück (Türen, Schubladen).
+- **Ketten, die folgen**: Objekte, die hinter einem vor- und zurücklaufenden
+  Objekt verkettet sind, folgen seiner Richtung, hin und zurück, jedes, sobald
+  das vorige fertig ist (ein Hebel, dann die Zugbrücke).
 - **Das Projekt ändert sich nicht**: Animationen bewegen die Objekte, ohne
   das Modell anzurühren. *Stopp* stellt alles zurück, und die Datei speichert
   immer den Ruhezustand; *Behalten* lässt die Objekte, wie sie gerade sind
@@ -40,13 +43,14 @@ Gebäude wandern.
   Punkt für jeden Zustand (SketchUp 2023 und neuer).
 - **Vorschau beim Bearbeiten**: Wenn du den Wert eines Zustands änderst,
   zeigt sich das Objekt in diesem Zustand.
-- **Mit [DagaWASD](https://github.com/Dagadam/dagawasd)** bewegen sich die
-  Objekte auch, während du gehst, erkundest, Pfade abspielst und Videos
-  exportierst (Bild für Bild, in der Zeit des Videos). Bewegliche Plattformen
-  nehmen dich mit, und die Benutzen-Taste startet die Objekte, die beim
-  Benutzen starten.
-- Panel in 36 Sprachen, mit denselben Einstellungen, Themen und demselben
-  Aussehen wie DagaWASD.
+- **Allein oder mit [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn braucht
+  nichts weiter. Ist zusätzlich DagaWASD 1.3.0 oder neuer installiert,
+  bewegen sich die Objekte auch, während du gehst, erkundest, Pfade abspielst
+  und Videos exportierst (Bild für Bild, in der Zeit des Videos). Bewegliche
+  Plattformen nehmen dich mit, und die Benutzen-Taste startet die Objekte, die
+  beim Benutzen starten.
+- Panel in 36 Sprachen. Ist DagaWASD installiert, folgt es dessen Sprache und
+  Aussehen.
 - **Barrierefreiheit**: siehe [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Voraussetzungen: SketchUp 2023 oder neuer. Unter Windows entwickelt und
@@ -66,6 +70,9 @@ getestet; auf dem Mac noch nicht getestet.
 Für Objekte, die «beim Benutzen» starten, nimm das Werkzeug *Benutzen*
 (Symbolleiste oder Menü) und klicke im Modell auf das Objekt; Esc beendet
 das Werkzeug.
+Unter der Maus wird das Objekt, das starten wird, umrahmt und mit seinem
+Namen gezeigt. Startet kein Objekt mit der Zeitleiste, wird die Taste **▶**
+zu **☝**, dem Werkzeug *Benutzen*.
 
 ## Installation
 
@@ -87,6 +94,8 @@ Erweiterung innen aufgebaut ist, steht in [SVILUPPO.md](SVILUPPO.md).
   gefundenen SketchUp.
 - `tools\run_tests.bat` führt die Tests aus (Ruby mit simuliertem SketchUp;
   der Kurventest braucht zusätzlich Node.js).
+- `ruby tools\test_live.rb` testet im echten SketchUp über die Brücke von
+  DagaWASD (braucht ein leeres, nie geändertes Modell und lässt es leer).
 - `ruby tools\crea_rbz.rb` erstellt das Paket in `dist\`.
 - Die Versionsnummer steht nur in `dagadyn.rb` (`VERSION`); jede Version hat
   ihren Abschnitt in `CHANGELOG.md`.

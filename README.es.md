@@ -27,6 +27,9 @@ encienden, secciones que recorren un edificio.
   termine (más una espera), o **al accionarlo**: un clic con la herramienta
   *Accionar*. Puede empezar cada vez desde el principio, o avanzar y la vez
   siguiente retroceder (puertas, cajones).
+- **Cadenas que siguen**: los objetos encadenados detrás de uno que avanza y
+  retrocede siguen su dirección, a la ida y a la vuelta, cada uno cuando el
+  anterior ha terminado (una palanca, luego el puente levadizo).
 - **El proyecto no cambia**: las animaciones mueven los objetos sin tocar el
   modelo. *Stop* lo devuelve todo a su sitio y el archivo guarda siempre el
   estado de reposo; *Conservar* deja los objetos como están ahora (Ctrl+Z lo
@@ -38,12 +41,13 @@ encienden, secciones que recorren un edificio.
   con un punto por cada estado (SketchUp 2023 y posteriores).
 - **Vista previa al editar**: al cambiar el valor de un estado, el objeto se
   muestra en ese estado.
-- **Con [DagaWASD](https://github.com/Dagadam/dagawasd)** los objetos también
-  se mueven mientras caminas, exploras, reproduces recorridos y exportas
-  vídeos (fotograma a fotograma, al tiempo del vídeo). Las plataformas en
-  movimiento te llevan consigo y la tecla Accionar pone en marcha los objetos
-  que empiezan al accionarlos.
-- Panel en 36 idiomas, con los mismos ajustes, temas y aspecto que DagaWASD.
+- **Sola o con [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn no necesita
+  nada más. Con DagaWASD 1.3.0 o posterior instalado, los objetos también se
+  mueven mientras caminas, exploras, reproduces recorridos y exportas vídeos
+  (fotograma a fotograma, al tiempo del vídeo). Las plataformas en movimiento
+  te llevan consigo y la tecla Accionar pone en marcha los objetos que
+  empiezan al accionarlos.
+- Panel en 36 idiomas. Con DagaWASD instalado, sigue su idioma y su aspecto.
 - **Accesibilidad**: ver [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Requisitos: SketchUp 2023 o posterior. Desarrollada y probada en Windows; en
@@ -63,6 +67,9 @@ Mac aún no se ha probado.
 Para los objetos que empiezan «al accionarlos», toma la herramienta
 *Accionar* (barra o menú) y haz clic en el objeto en el modelo; Esc sale de
 la herramienta.
+Bajo el ratón, el objeto que se pondrá en marcha aparece recuadrado y con su
+nombre. Si ningún objeto empieza con la línea de tiempo, el botón **▶** se
+convierte en **☝**, la herramienta *Accionar*.
 
 ## Instalación
 
@@ -84,6 +91,9 @@ está hecha la extensión por dentro está en [SVILUPPO.md](SVILUPPO.md).
   SketchUp que encuentra.
 - `tools\run_tests.bat` ejecuta las pruebas (Ruby con un SketchUp simulado;
   la prueba de las curvas necesita también Node.js).
+- `ruby tools\test_live.rb` lo prueba en el SketchUp real, a través del
+  puente de DagaWASD (necesita abierto un modelo vacío y sin cambios, y lo
+  deja vacío).
 - `ruby tools\crea_rbz.rb` crea el paquete en `dist\`.
 - El número de versión está solo en `dagadyn.rb` (`VERSION`); cada versión
   tiene su sección en `CHANGELOG.md`.

@@ -26,6 +26,9 @@ lampen die aangaan, sneden die door een gebouw schuiven.
   (plus een wachttijd), of **bij bedienen**: een klik met het gereedschap
   *Bedienen*. Het kan elke keer opnieuw beginnen, of vooruit gaan en de
   volgende keer terug (deuren, laden).
+- **Ketens die volgen**: objecten in een keten achter een object dat heen en
+  terug gaat volgen zijn richting, heen en terug, elk zodra het vorige klaar
+  is (een hendel, dan de ophaalbrug).
 - **Het project verandert niet**: animaties bewegen de objecten zonder het
   model aan te raken. *Stop* zet alles terug en het bestand bewaart altijd
   de rusttoestand; *Houden* laat de objecten zoals ze nu zijn (Ctrl+Z maakt
@@ -37,12 +40,13 @@ lampen die aangaan, sneden die door een gebouw schuiven.
   punt voor elke toestand (SketchUp 2023 en later).
 - **Voorbeeld tijdens bewerken**: als je de waarde van een toestand
   verandert, toont het object zich in die toestand.
-- **Met [DagaWASD](https://github.com/Dagadam/dagawasd)** bewegen objecten
-  ook terwijl je loopt, verkent, paden afspeelt en video's exporteert (beeld
-  voor beeld, op de tijd van de video). Bewegende platforms nemen je mee en
-  de Bedienen-toets start de objecten die bij bedienen starten.
-- Paneel in 36 talen, met dezelfde instellingen, thema's en uiterlijk als
-  DagaWASD.
+- **Alleen of met [DagaWASD](https://github.com/Dagadam/dagawasd)**: DagaDyn heeft
+  verder niets nodig. Met DagaWASD 1.3.0 of nieuwer ook geïnstalleerd, bewegen
+  objecten ook terwijl je loopt, verkent, paden afspeelt en video's exporteert
+  (beeld voor beeld, op de tijd van de video). Bewegende platforms nemen je
+  mee en de Bedienen-toets start de objecten die bij bedienen starten.
+- Paneel in 36 talen. Met DagaWASD geïnstalleerd volgt het de taal en het
+  uiterlijk daarvan.
 - **Toegankelijkheid**: zie [ACCESSIBILITY.md](.github/ACCESSIBILITY.md).
 
 Vereisten: SketchUp 2023 of nieuwer. Ontwikkeld en getest op Windows; op een
@@ -62,6 +66,9 @@ Mac nog niet getest.
 Voor objecten die «bij bedienen» starten: neem het gereedschap *Bedienen*
 (werkbalk of menu) en klik op het object in het model; Esc verlaat het
 gereedschap.
+Onder de muis krijgt het object dat zal starten een kader en zijn naam.
+Start geen enkel object met de tijdlijn, dan wordt de knop **▶** een **☝**,
+het gereedschap *Bedienen*.
 
 ## Installatie
 
@@ -82,6 +89,8 @@ extensie van binnen in elkaar zit, staat in [SVILUPPO.md](SVILUPPO.md).
   die het vindt.
 - `tools\run_tests.bat` draait de tests (Ruby met een gesimuleerde SketchUp;
   de curvetest heeft ook Node.js nodig).
+- `ruby tools\test_live.rb` test in de echte SketchUp, via de brug van
+  DagaWASD (wil een leeg, nooit gewijzigd model open en laat het leeg achter).
 - `ruby tools\crea_rbz.rb` maakt het pakket in `dist\`.
 - Het versienummer staat alleen in `dagadyn.rb` (`VERSION`); elke versie
   heeft een eigen sectie in `CHANGELOG.md`.

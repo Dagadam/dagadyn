@@ -1,6 +1,6 @@
 # Novità di DagaDyn
 
-## [Prossima versione]
+## [0.3.0] — 2026-11-16
 
 ### Novità
 - **In catena dietro un oggetto azionato «avanti/indietro» si segue la sua direzione** (leva → ponte levatoio,
