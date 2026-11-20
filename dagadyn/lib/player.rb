@@ -363,6 +363,8 @@ module DagaDyn
       s[:total] = timeline_length(list, starts)
       s[:loops] = loops?(list, starts)
       s[:items].each { |e, it| it[:static] = starts[e.persistent_id] }
+      s[:fx] = s[:items].each_value.any? { |it| it[:tracks].any? { |tr| tr[:fx] } }
+      s[:ufac] = (unit_info(s[:model])['factor'] rescue nil) if s[:fx]
       warp_setup(s)
     end
 
@@ -490,41 +492,71 @@ module DagaDyn
         kind  = PROPS[t['prop']][:kind]
         color = kind == :color
         vals  = t['keys'].map { |k| color ? hex_rgb(k['v']) : k['v'] }
-        segs  = t['keys'].drop(1).map { |k| { dur: k['dur'], curve: curve_prepare(k['curve']) } }
+        segs  = t['keys'].drop(1).map { |k| { dur: k['dur'], curve: curve_prepare(k['curve']), fx: fx_prepare(k) } }
+        acc   = 0.0
         { prop: t['prop'], delay: t['delay'], loop: t['loop'], vals: vals, segs: segs,
+          ends: segs.map { |g| acc += g[:dur] }, fx: segs.any? { |g| g[:fx] },
           cycle: segs.sum { |g| g[:dur] }, color: color, discrete: DISCRETE.include?(kind) }
       end
     end
 
     # Valore di una traccia all'istante t (tempo locale dell'oggetto).
-    def self.track_value(tr, t)
+    # ctx serve alle transizioni a formula (lib/formula.rb): da dove
+    # leggere gli altri oggetti e a che istante della timeline corrisponde t.
+    def self.track_value(tr, t, ctx = nil)
       vals = tr[:vals]
       tau  = t - tr[:delay]
       c    = tr[:cycle]
       return finish(tr, vals[0]) if tau <= 0 || vals.size == 1
-      return finish(tr, vals[-1]) if c <= 0
+      ctx ||= { w: nil, off: 0.0, f: fx_factor } if tr[:fx]
+      base = tr[:delay]                       # tempo locale in cui è cominciato questo giro
+      return finish(tr, seg_from(tr, tr[:segs].size, base, ctx)) if c <= 0
       case tr[:loop]
       when 'loop'
-        tau %= c
+        n = (tau / c).floor
+        tau -= n * c
+        base += n * c
       when 'pingpong'
-        tau %= 2 * c
+        n = (tau / (2 * c)).floor
+        tau -= n * 2 * c
+        base += n * 2 * c
         tau = 2 * c - tau if tau > c
       else
-        return finish(tr, vals[-1]) if tau >= c
+        return finish(tr, seg_from(tr, tr[:segs].size, base, ctx)) if tau >= c
       end
       start = 0.0
       tr[:segs].each_with_index do |g, i|
         d = g[:dur]
         if tau <= start + d && d > 0
-          e = curve_eval(g[:curve], (tau - start) / d)
-          a = vals[i]; b = vals[i + 1]
+          x = (tau - start) / d
+          if g[:fx]
+            v0 = seg_from(tr, i, base, ctx)
+            v = fx_eval(tr, g, x, tau - start, v0, t + ctx[:off], ctx)
+            return finish(tr, v || v0)
+          end
+          e = curve_eval(g[:curve], x)
+          a = tr[:fx] ? seg_from(tr, i, base, ctx) : vals[i]
+          b = vals[i + 1]
           # a scatti: si passa allo stato quando la sua transizione finisce
           return finish(tr, e >= 1.0 - 1e-9 ? b : a) if tr[:discrete]
           return finish(tr, tr[:color] ? mix_color(a, b, e) : a + (b - a) * e)
         end
         start += d
       end
-      finish(tr, vals[-1])
+      finish(tr, seg_from(tr, tr[:segs].size, base, ctx))
+    end
+
+    # Il valore da cui parte la transizione i (= dove è arrivata quella
+    # prima): lo stato scritto, oppure, dopo una transizione a formula,
+    # dove la formula ha portato l'oggetto alla sua fine, con i parametri
+    # di quell'istante (base: tempo locale d'inizio del giro). i = numero
+    # delle transizioni: lo stato finale.
+    def self.seg_from(tr, i, base, ctx)
+      g = i > 0 ? tr[:segs][i - 1] : nil
+      return tr[:vals][i] unless g && g[:fx]
+      v0 = seg_from(tr, i - 1, base, ctx)
+      v = fx_eval(tr, g, 1.0, g[:dur], v0, base + tr[:ends][i - 1] + ctx[:off], ctx)
+      v.nil? ? v0 : finish(tr, v)
     end
 
     def self.finish(tr, v)
@@ -720,11 +752,13 @@ module DagaDyn
       s[:tick] += 1
       jobs = []
       moved = []
+      w = s[:fx] ? fx_world_session(s) : nil   # transizioni a formula: chi legge chi
       s[:items].each do |e, it|
         next unless e.valid?
         local = item_local(s, it, t)
+        ctx = w && { w: w, off: t - local, f: w[:f] }
         v = {}
-        it[:tracks].each { |tr| v[tr[:prop]] = track_value(tr, local) }
+        it[:tracks].each { |tr| v[tr[:prop]] = track_value(tr, local, ctx) }
         prev = it[:last_v]
         next if !force && v == prev
         it[:last_v] = v

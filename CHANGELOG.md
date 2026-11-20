@@ -12,11 +12,22 @@
   più della timeline (60 s di timeline in 10 s: sei volte più veloce). Vale per il Play, la barra, gli oggetti
   azionati e, con DagaWASD, anche camminando e nei video. Sta nel modello e si annulla con Ctrl+Z; «Tempo
   normale» la toglie. Con «Ripeti», o con oggetti in ciclo, ricomincia a ogni giro della timeline.
+- **Transizioni a formula e collegamenti fra oggetti**: spuntando «ƒ Formula» su una transizione, al posto della
+  curva a pallini e del valore di arrivo c'è un'espressione, per esempio `v0 + (2 - v0) * u` (u avanzamento 0–1,
+  t secondi, d durata, v0 valore di partenza; + − × ÷ ^, seni e coseni in gradi, sqrt, min, max…). I parametri
+  leggono altre tracce, di questo o di altri oggetti, nello stesso istante: il loro valore o l'avanzamento (0–1)
+  di una loro transizione. Così la larghezza di una lastra può seguire l'altezza di un cubo mentre cresce. Valori
+  nelle unità del pannello; la transizione dopo riparte da dove l'ha lasciata la formula. Il pannello segnala
+  formule sbagliate, oggetti o tracce che non ci sono più e collegamenti circolari. Le formule non eseguono
+  codice: un interprete conosce solo numeri, operatori e quelle funzioni.
 
 ### Esempio
 - **examples/bedroom.skp**: una cameretta in cui si muove tutto, con tutte le funzioni di DagaDyn (giorno e
   notte fuori dalla finestra, porta, armadio, cassetti, lampada, tende, scatola a sorpresa, piano di sezione, giochi).
   Si apre in SketchUp 2023 o successivo; examples/README.md spiega cosa cliccare e cosa mostra ogni oggetto.
+- **examples/formulas.skp**: le transizioni a formula. Tre oggetti in serie (l'altezza di un cubo fa la larghezza
+  di una lastra, che fa la rotazione di una pala), un ascensore con contrappeso (valore) e barra di avanzamento
+  (avanzamento 0–1 della transizione), un pendolo e un'onda fatti solo di formule.
 
 ### Pannello
 - In alto non c'è più il secondo tasto Play (faceva lo stesso del Play della timeline): restano guida, registro

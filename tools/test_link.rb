@@ -9,7 +9,7 @@ ROOT = File.expand_path('..', __dir__)
 require File.join(ROOT, 'tools', 'fake_sketchup')
 $model = Sketchup::Model.new
 
-%w[config i18n settings curves color tracks props player api paths observers panel].each do |f|
+%w[config i18n settings curves formula color tracks props player api paths observers panel].each do |f|
   require File.join(ROOT, 'dagadyn', 'lib', f)
 end
 D = DagaDyn::Dyn
@@ -628,6 +628,49 @@ eq('l\'animato nel modello non tocca i contenitori degli altri', solo.definition
 st = [mid.definition.stale, outer.definition.stale]
 D.cmd_stop
 eq('Stop: a riposo, e l\'ingombro si rifà anche lì', [org(rider)[0], mid.definition.stale > st[0], outer.definition.stale > st[1]], [0.0, true, true])
+
+# ── Transizioni a formula: un oggetto segue l'altro ──
+# Il cubo cresce da 1 a 2 m in 2 s; la lastra è larga 0.5 + K/2 con K =
+# altezza del cubo; la sfera si sposta di K × 2 m, K = avanzamento della
+# transizione del cubo (0–1).
+fxm = Sketchup::Model.new
+$model = fxm
+D.model_changed(fxm, true)
+def xlen(e); a = e.transformation.to_a; Math.sqrt(a[0]**2 + a[1]**2 + a[2]**2) * e.definition.bounds.width / 1.m; end
+def fxtr(prop, v0, dur, expr, params)
+  { 'prop' => prop, 'keys' => [{ 'v' => v0 }, { 'v' => v0, 'dur' => dur, 'preset' => 'linear', 'curve' => LIN,
+                                                 'fx' => { 'on' => true, 'expr' => expr, 'params' => params } }] }
+end
+cubo = fxm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+lastra = fxm.add_group([0, 0, 0], [1.m, 1.m, 0.1.m], Geom::Transformation.translation(Geom::Vector3d.new(3.m, 0, 0)))
+sfera = fxm.add_group([0, 0, 0], [0.5.m, 0.5.m, 0.5.m], Geom::Transformation.translation(Geom::Vector3d.new(6.m, 0, 0)))
+anim(cubo, [tr('size_z', 1.m, 2.m, 2.0)])
+anim(lastra, [fxtr('size_x', 1.m, 2.0, '0.5 + K/2', [{ 'n' => 'K', 'pid' => cubo.persistent_id, 'prop' => 'size_z', 'at' => 0 }])])
+anim(sfera, [fxtr('move_x', 0, 2.0, 'K * 2', [{ 'n' => 'K', 'pid' => cubo.persistent_id, 'prop' => 'size_z', 'at' => 1 }])])
+D::ModelObs.new.onTransactionCommit(fxm)
+eq('formula: le scritte nella scena non cambiano la timeline', D.timeline_length(D.animated_instances(fxm)), 2.0)
+pts = D.path_compute(sfera, nil)
+eq('traiettoria fuori dal Play: la sfera legge il cubo (2 m in fondo)', pts && (pts[0].last.x - pts[0].first.x) / 1.m, 2.0)
+D.cmd_seek(1.0)
+eq('a 1 s la lastra è larga 0.5 + 1.5/2 m', xlen(lastra), 1.25)
+eq('…e la sfera a metà della transizione del cubo: 1 m', org(sfera)[0] - 6.0, 1.0)
+D.cmd_seek(2.0)
+eq('a 2 s: 1.5 m e 2 m', [xlen(lastra), org(sfera)[0] - 6.0].map { |v| v.round(6) }, [1.5, 2.0])
+D.cmd_stop
+eq('Stop: tutto a riposo', [xlen(lastra), org(sfera)[0]].map { |v| v.round(6) }, [1.0, 6.0])
+info = D.obj_info(lastra)
+eq('pannello: gli altri oggetti con le tracce che una formula può leggere', info['others'].find { |o| o['pid'] == cubo.persistent_id }['tracks'],
+   [{ 'prop' => 'size_z', 'n' => 1 }])
+chk = ->(e, data) { D.fx_check(JSON.generate('pid' => e.persistent_id, 'data' => data, 'seq' => 7)) }
+eq('controllo: tutto a posto', chk.call(lastra, D.read_data(lastra)), { 'seq' => 7, 'errs' => {} })
+giro = D.read_data(cubo)
+giro['tracks'][0]['keys'][1]['fx'] = { 'on' => true, 'expr' => 'K', 'params' => [{ 'n' => 'K', 'pid' => lastra.persistent_id, 'prop' => 'size_x', 'at' => 0 }] }
+eq('controllo: il cubo che legge la lastra che legge il cubo', chk.call(cubo, giro)['errs'], { '0_1' => ['fx.e_cycle', ''] })
+eq('…l\'avanzamento invece non fa giro (dipende dal tempo)', chk.call(sfera, D.read_data(sfera))['errs'], {})
+anim(cubo, giro['tracks'])
+D.cmd_seek(1.0)
+eq('giro chiuso salvato lo stesso: niente blocco, valori finiti', [xlen(lastra), xlen(cubo)].all?(&:finite?), true)
+D.cmd_stop
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

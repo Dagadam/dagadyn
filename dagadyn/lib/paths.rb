@@ -73,9 +73,23 @@ module DagaDyn
       return nil unless len && len > 0
       w = world_of(e)
       center = rest[:center]
+      # Transizioni a formula che leggono altri oggetti: il tempo locale tau
+      # è l'istante st0 + tau della timeline (fuori dalla timeline: da 0)
+      fw = nil
+      if tracks.any? { |tr| tr[:fx] }
+        s = @session
+        if s && it
+          fw = fx_world_session(s)
+          st0 = item_start(s, it) || 0.0
+        else
+          fw = fx_world_model(e.model)
+          st0 = fw[:starts][e.persistent_id] || 0.0
+        end
+      end
       at = lambda do |tau|
+        ctx = fw && { w: fw, off: st0, f: fw[:f] }
         v = {}
-        tracks.each { |tr| v[tr[:prop]] = track_value(tr, tau) }
+        tracks.each { |tr| v[tr[:prop]] = track_value(tr, tau, ctx) }
         center.transform(compose(rest, v)).transform(w)
       end
       pts = (0..PATH_SAMPLES).map { |i| at.call(len * i / PATH_SAMPLES) }

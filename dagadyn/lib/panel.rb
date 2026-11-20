@@ -95,8 +95,16 @@ module DagaDyn
         'live' => !!(@session && @session[:items][e]),
         'tags' => model.layers.map { |l| l.name.to_s },
         'others' => (list || animated_instances(model)).reject { |x, _| x == e }
-                                             .map { |x, _| { 'pid' => x.persistent_id, 'name' => ent_name(x) } },
+                                             .map { |x, xd| other_info(x, xd) },
         'overlay' => overlay_ok? }
+    end
+
+    # Un altro oggetto animato, per «parte dopo» e per i parametri delle
+    # formule: le sue tracce numeriche accese e quante transizioni hanno.
+    def self.other_info(x, xd)
+      { 'pid' => x.persistent_id, 'name' => ent_name(x),
+        'tracks' => xd['tracks'].select { |tr| tr['on'] && fx_kind?(tr['prop']) }
+                                .map { |tr| { 'prop' => tr['prop'], 'n' => tr['keys'].size - 1 } } }
     end
 
     # Gli oggetti animati, la durata della timeline e la velocità del tempo
@@ -407,6 +415,7 @@ module DagaDyn
       cb.call('select_obj')  { |pid| select_pid(pid) }
       cb.call('preview')     { |json| preview_obj(json) }
       cb.call('use_tool')    { |_| start_use_tool }
+      cb.call('fx_check')    { |json| js("fxChecked(#{js_json(fx_check(json))})") }
 
       @dialog.set_on_closed { @dialog = nil; ui_watch_stop } if @dialog.respond_to?(:set_on_closed)
       @dialog.show

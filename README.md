@@ -27,6 +27,10 @@ through a building.
   like the transitions decides how time flows for the whole model: steeper
   for a time-lapse, flatter for slow motion, and the playback can last less
   or more than the timeline.
+- **Formulas and links**: a transition can follow a formula instead of the
+  curve (for example `v0 + (2 - v0) * u`), and through parameters read other
+  tracks, of other objects too: their value or the progress of one of their
+  transitions. The slab widens while the cube grows. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Starts**: an object starts with the timeline, after another object has
   finished (plus a wait), or **when it is used**: click it with the *Use*
   tool. It can start over every time, or go forward and then back the next

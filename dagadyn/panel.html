@@ -470,6 +470,20 @@ body.rtl .ktr{padding:4px 16px 4px 0}
 .cthumb path{stroke:var(--acc);fill:none;stroke-width:2}
 .cthumb line{stroke:var(--l2);stroke-width:1}
 .cname{font-size:.867rem;color:var(--t2)}
+/* Transizione a formula */
+.fxon{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--t2);font-size:.867rem;white-space:nowrap}
+.fxbox{flex:1 1 100%;display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.fxrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fxexpr,.fxname{background:var(--s3);border:1px solid var(--l2);color:var(--hi);padding:5px 8px;outline:none;
+  border-radius:calc(5px*var(--rk));font:.95rem Consolas,'Cascadia Mono',monospace;direction:ltr;user-select:text}
+.fxexpr{flex:1 1 220px;min-width:0}
+.fxname{flex:0 0 60px;width:60px;text-align:center}
+.fxexpr:focus,.fxname:focus{border-color:var(--acc);background:var(--s4)}
+.fxpar .sel{flex:0 1 160px;max-width:160px;padding:4px 6px;font-size:.9rem}
+.fxerr{color:var(--dg-tx);font-size:.85rem}
+.fxerr:empty{display:none}
+.fxvars{font-size:.8rem;color:var(--m2);line-height:1.45}
+.fxend{font-size:.9rem;color:var(--t2);font-style:italic}
 .ibtn{background:var(--s4);border:none;color:var(--t2);border-radius:calc(5px*var(--rk));
   padding:4px 9px;cursor:pointer;font:inherit;font-size:.867rem;white-space:nowrap;outline:none}
 .ibtn:hover,.ibtn:focus-visible{background:var(--s5);color:var(--t1)}
@@ -2194,20 +2208,25 @@ function valInput(i, j){
 function trackHTML(tr, i){
   const p = tr.prop;
   let keys = '';
+  const fxOk = FX_KINDS.includes(kindOf(p));
   tr.keys.forEach((k, j) => {
+    const fx = j > 0 && fxOk && k.fx && k.fx.on;
     if(j > 0){
       keys += `<div class="ktr">↓
         <input class="vbox sm" type="text" inputmode="decimal" value="${fmtSec(k.dur)}" title="${escA(T('tr.dur'))}"
                oninput="keyDur(${i},${j},this,false)" onchange="keyDur(${i},${j},this,true)" onblur="keyDur(${i},${j},this,true)">
         <span class="vu">s</span>
-        <button class="cthumb" title="${escA(T('tr.curve_h'))}" onclick="openCurve(${i},${j})">${curveThumb(k.curve, 76, 34)}</button>
-        <span class="cname">${esc(presetName(k.preset))}</span>
+        ${fx ? '' : `<button class="cthumb" title="${escA(T('tr.curve_h'))}" onclick="openCurve(${i},${j})">${curveThumb(k.curve, 76, 34)}</button>
+        <span class="cname">${esc(presetName(k.preset))}</span>`}
+        ${fxOk ? `<label class="fxon" title="${escA(T('tr.fx_h'))}"><input type="checkbox"${fx ? ' checked' : ''}
+          onchange="fxOn(${i},${j},this.checked)">ƒ ${esc(T('tr.fx'))}</label>` : ''}
         ${tr.keys.length > 2 ? `<button class="ibtn del ghost" title="${escA(T('tr.key_del'))}" onclick="keyDel(${i},${j})">✕</button>` : ''}
+        ${fx ? fxHTML(tr, i, j) : ''}
       </div>`;
     }
     keys += `<div class="kst"><button class="kdot" title="${escA(T('tr.see_h'))}" onclick="previewKey(${i},${j})"></button><span class="kl">${esc(j === 0 ? T('tr.from') : (j === tr.keys.length - 1 ? T('tr.to') : T('tr.state') + ' ' + (j + 1)))}</span>
-      ${valInput(i, j)}
-      <button class="ibtn ghost" title="${escA(T('tr.rest_h'))}" onclick="keyRest(${i},${j})">⌖ ${esc(T('tr.rest'))}</button>
+      ${fx ? `<span class="fxend">ƒ ${esc(T('tr.fx_end'))}</span>` : `${valInput(i, j)}
+      <button class="ibtn ghost" title="${escA(T('tr.rest_h'))}" onclick="keyRest(${i},${j})">⌖ ${esc(T('tr.rest'))}</button>`}
     </div>`;
   });
   const loops = ['none','loop','pingpong'].map(l => `<option value="${l}"${tr.loop === l ? ' selected' : ''}>${esc(T('lp.' + l))}</option>`).join('');
@@ -2269,6 +2288,7 @@ function renderObj(){
       <button class="btn btn-sm" onclick="trAdd(document.getElementById('addProp').value)">+ ${esc(T('ob.add'))}</button>
     </div>`;
   updateTotals();
+  fxCheckSoon();
 }
 
 /* Partenza (con la timeline, dopo un altro oggetto, quando lo si aziona),
@@ -2408,6 +2428,124 @@ function keyDel(i, j){
   if(tr.keys.length <= 2) return;
   tr.keys.splice(j, 1);
   tracksChanged(true);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRANSIZIONI A FORMULA (lib/formula.rb)
+   Spuntata «Formula», al posto dei pallini c'è il campo della formula
+   e il valore di arrivo non si scrive: lo dà la formula. Ogni parametro
+   è un nome (K) e una traccia accesa di un oggetto animato (anche
+   questo, ma non la stessa traccia): il suo valore, o l'avanzamento da 0
+   a 1 di una sua transizione. Gli errori li trova Ruby (fx_check: lo
+   stesso interprete del motore, e conosce tutti gli oggetti) e tornano
+   con fxChecked.
+═══════════════════════════════════════════════════════════════ */
+const FX_KINDS = ['length','angle','factor','ratio'];
+let FX_ERR = {}, FX_PID = null, FX_SEQ = 0, fxTimer = null;
+
+/* Gli oggetti che un parametro può leggere: questo, poi gli altri animati */
+function fxSources(tr){
+  const own = SEL.data.tracks.filter(t => t.on && t.prop !== tr.prop && FX_KINDS.includes(kindOf(t.prop)))
+                             .map(t => ({prop: t.prop, n: t.keys.length - 1}));
+  return [{pid: SEL.pid, name: T('tr.fx_self').replace('{name}', SEL.name), tracks: own}]
+    .concat((SEL.others || []).map(o => ({pid: o.pid, name: o.name, tracks: o.tracks || []})));
+}
+function fxHTML(tr, i, j){
+  const f = tr.keys[j].fx, srcs = fxSources(tr);
+  return `<div class="fxbox">
+    <div class="fxrow"><input class="fxexpr" type="text" spellcheck="false" autocomplete="off" maxlength="400"
+        value="${escA(f.expr)}" placeholder="${escA(T('tr.fx_ph'))}" aria-label="${escA(T('tr.fx'))}"
+        oninput="fxExpr(${i},${j},this)"><span class="vu">${esc(unitOf(tr.prop))}</span></div>
+    <div class="fxerr" data-k="${i}_${j}" role="status">${esc(fxErrText(i + '_' + j))}</div>
+    ${f.params.map((q, n) => fxParamHTML(i, j, q, n, srcs)).join('')}
+    <div class="fxrow"><button class="ibtn" onclick="fxParamAdd(${i},${j})">+ ${esc(T('tr.fx_add'))}</button></div>
+    <div class="fxvars">${esc(T('tr.fx_vars'))}</div>
+  </div>`;
+}
+function fxParamHTML(i, j, q, n, srcs){
+  const pick = `<option value="" selected>${esc(T('tr.fx_pick'))}</option>`;
+  const src = srcs.find(o => o.pid === q.pid), trk = src && src.tracks.find(t => t.prop === q.prop);
+  const objs = (src ? '' : pick) + srcs.map(o => `<option value="${o.pid}"${o === src ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
+  const props = (trk ? '' : pick) + (src ? src.tracks.map(t =>
+    `<option value="${t.prop}"${t === trk ? ' selected' : ''}>${esc(T('pr.' + t.prop))}</option>`).join('') : '');
+  let ats = '';
+  if(trk){
+    if(q.at > trk.n) ats += pick;
+    for(let a = 0; a <= trk.n; a++){
+      ats += `<option value="${a}"${a === q.at ? ' selected' : ''}>${esc(a ? T('tr.fx_prog').replace('{n}', a) : T('tr.fx_value'))}</option>`;
+    }
+  }
+  const unit = trk ? (q.at ? '0–1' : unitOf(q.prop)) : '';
+  return `<div class="fxrow fxpar">
+    <input class="fxname" type="text" maxlength="16" spellcheck="false" autocomplete="off" value="${escA(q.n)}"
+      aria-label="${escA(T('tr.fx_name'))}" title="${escA(T('tr.fx_name'))}" oninput="fxParamName(${i},${j},${n},this)">
+    <span>=</span>
+    <select class="sel" onchange="fxParamObj(${i},${j},${n},+this.value)">${objs}</select>
+    <select class="sel" onchange="fxParamProp(${i},${j},${n},this.value)"${src ? '' : ' disabled'}>${props}</select>
+    <select class="sel" onchange="fxParamAt(${i},${j},${n},+this.value)"${trk ? '' : ' disabled'}>${ats}</select>
+    <span class="vu">${esc(unit)}</span>
+    <button class="ibtn del ghost" title="${escA(T('tr.fx_del'))}" onclick="fxParamDel(${i},${j},${n})">✕</button>
+  </div>`;
+}
+/* Accesa la prima volta: una formula che fa quello che facevano i
+   pallini con una curva lineare, fino al valore di arrivo di prima */
+function fxOn(i, j, on){
+  const tr = SEL.data.tracks[i], k = tr.keys[j];
+  if(!k.fx) k.fx = {on:false, expr:'', params:[]};
+  k.fx.on = on;
+  if(on && !k.fx.expr.trim()) k.fx.expr = `v0 + (${fmtVal(tr.prop, k.v)} - v0) * u`;
+  if(on && CV && !CV.time && CV.i === i && CV.j === j) closeCurve();
+  tracksChanged(true, keyTime(i, j));
+}
+function fxKey(i, j){ return SEL.data.tracks[i].keys[j].fx; }
+function fxExpr(i, j, el){
+  fxKey(i, j).expr = el.value;
+  tracksChanged(false);
+  fxCheckSoon();
+}
+function fxParamAdd(i, j){
+  const f = fxKey(i, j), used = new Set(f.params.map(q => q.n));
+  let n = 'K', c = 1;
+  while(used.has(n)) n = 'K' + (++c);
+  f.params.push({n, pid:0, prop:'', at:0});
+  tracksChanged(true);
+}
+function fxParamDel(i, j, n){ fxKey(i, j).params.splice(n, 1); tracksChanged(true); }
+function fxParamName(i, j, n, el){
+  const v = el.value.replace(/[^A-Za-z0-9_]/g, '').slice(0, 16);
+  if(v !== el.value) el.value = v;
+  fxKey(i, j).params[n].n = v;
+  tracksChanged(false);
+  fxCheckSoon();
+}
+function fxParamObj(i, j, n, pid){
+  const q = fxKey(i, j).params[n], src = fxSources(SEL.data.tracks[i]).find(o => o.pid === pid);
+  q.pid = src ? pid : 0;
+  q.prop = src && src.tracks.length ? src.tracks[0].prop : '';
+  q.at = 0;
+  tracksChanged(true);
+}
+function fxParamProp(i, j, n, v){ const q = fxKey(i, j).params[n]; q.prop = v; q.at = 0; tracksChanged(true); }
+function fxParamAt(i, j, n, v){ fxKey(i, j).params[n].at = v; tracksChanged(true); }
+
+function fxErrText(k){
+  const e = FX_PID === SEL.pid && FX_ERR[k];   // errori di un altro oggetto: non valgono
+  return e ? T(e[0]).replace('{x}', e[1]) : '';
+}
+function fxCheckSoon(){
+  clearTimeout(fxTimer);
+  fxTimer = setTimeout(fxCheck, 200);
+}
+function fxCheck(){
+  if(SEL.kind !== 'obj' || !SEL.data.tracks.some(t => t.keys.some(k => k.fx && k.fx.on))){ FX_ERR = {}; return; }
+  FX_SEQ++;
+  FX_PID = SEL.pid;
+  sketchup.fx_check(JSON.stringify({pid: SEL.pid, data: SEL.data, seq: FX_SEQ}));
+}
+function fxChecked(r){
+  if(!r || r.seq !== FX_SEQ) return;          // risposta a una richiesta superata
+  FX_ERR = r.errs || {};
+  document.querySelectorAll('.fxerr').forEach(el => { el.textContent = fxErrText(el.dataset.k); });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2863,7 +3001,7 @@ function saveTime(){
 
 /* ═══ Guida ═══
    Testi help.* in lang/*.json; le parole tra [quadre] diventano <kbd>. */
-const HELP_ITEMS = 9;
+const HELP_ITEMS = 10;
 function helpText(k){ return esc(T(k)).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>'); }
 function helpHTML(){
   let li = '';

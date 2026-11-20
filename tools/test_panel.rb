@@ -205,5 +205,95 @@ eq('«Tempo normale»: lineare, senza durata', r3['normal'], { 'preset' => 'line
 eq('timeline svuotata con l\'editor aperto: si chiude', r3['gone'], [nil, false])
 eq('velocità scritte come ×', r3['fmt'], ['6.0', '0.50', '−1.3', '120', '—'])
 
+# Transizioni a formula: la casella «Formula» toglie pallini e valore di
+# arrivo e mette campo e parametri; i parametri leggono questo oggetto (non
+# la stessa traccia) e gli altri; gli errori arrivano da Ruby (fxChecked).
+script4 = <<~JS
+  const errEls = [];
+  const document = {querySelectorAll: s => s === '.fxerr' ? errEls : []};
+  function T(k){ return k; }
+  function curveThumb(){ return '<svg/>'; }
+  function presetName(id){ return 'cv.' + id; }
+  function openCurve(){}
+  let closed = 0;
+  function closeCurve(){ closed++; CV = null; }
+  const changes = [];
+  function tracksChanged(redraw, preview){ changes.push([redraw, preview === undefined ? null : preview]); }
+  let timers = 0;
+  function setTimeout(f){ timers++; return 0; }
+  function clearTimeout(){}
+  const sent = [];
+  const sketchup = {fx_check: j => sent.push(JSON.parse(j))};
+  #{html[/^const PROPS = \{.*?\};\n/m]}
+  #{html[/^const LEN_DEC.*$/]}
+  #{html[/^let UNIT = .*$/]}
+  #{html[/^const FX_KINDS.*$/]}
+  #{html[/^let FX_ERR = .*$/]}
+  #{%w[esc escA kindOf fmtSec fxKey fxParamDel fxParamProp fxParamAt].map { |n| js_line(html, n) }.join("\n")}
+  #{%w[toDisp unitOf decOf fmtVal keyTime valInput trackHTML fxSources fxHTML fxParamHTML fxOn fxExpr fxParamAdd
+       fxParamName fxParamObj fxErrText fxCheckSoon fxCheck fxChecked].map { |n| js_fn(html, n) }.join}
+  let CV = {i:0, j:1};
+  const M = 39.37007874;
+  let SEL = {kind:'obj', pid:5, name:'Solido', data:{tracks:[
+      {id:'a', prop:'size_x', on:true, delay:0, loop:'none', keys:[{v:M}, {v:2*M, dur:1, preset:'linear', curve:[[0,0],[1,1]]}]},
+      {id:'b', prop:'size_y', on:true, delay:0, loop:'none', keys:[{v:M}, {v:M, dur:1, preset:'linear', curve:[[0,0],[1,1]]}]},
+      {id:'c', prop:'color', on:true, delay:0, loop:'none', keys:[{v:'#ff0000'}, {v:'#00ff00', dur:1, preset:'linear', curve:[[0,0],[1,1]]}]}]},
+    others:[{pid:1, name:'Cubo', tracks:[{prop:'size_z', n:2}, {prop:'rot_z', n:1}]}]};
+  const out = {};
+  const h0 = trackHTML(SEL.data.tracks[0], 0);
+  out.before = [h0.includes('cthumb'), h0.includes('fxexpr'), h0.includes('fxOn(0,1,this.checked)'), h0.includes('class="vbox" type="text"')];
+  out.color = trackHTML(SEL.data.tracks[2], 2).includes('fxOn(');
+  fxOn(0, 1, true);
+  const k = SEL.data.tracks[0].keys[1];
+  out.on = [k.fx.on, k.fx.expr, closed, changes[changes.length - 1]];
+  const h1 = trackHTML(SEL.data.tracks[0], 0);
+  out.after = [h1.includes('cthumb'), h1.includes('fxexpr'), h1.includes('fxend'), (h1.match(/class="vbox" type="text"/g) || []).length];
+  fxParamAdd(0, 1); fxParamAdd(0, 1);
+  out.names = k.fx.params.map(q => q.n);
+  const srcs = fxSources(SEL.data.tracks[0]);
+  out.sources = srcs.map(o => [o.pid, o.name, o.tracks.map(t => t.prop)]);
+  fxParamObj(0, 1, 0, 1);
+  out.picked = Object.assign({}, k.fx.params[0]);
+  fxParamAt(0, 1, 0, 2);
+  const h2 = trackHTML(SEL.data.tracks[0], 0);
+  out.paramHtml = [h2.includes('tr.fx_prog'), h2.includes('>0–1<'), h2.includes('value="2" selected')];
+  fxParamObj(0, 1, 1, 999);
+  out.unknown = [k.fx.params[1].pid, k.fx.params[1].prop];
+  const el = {value:'K!2'};
+  fxParamName(0, 1, 0, el);
+  out.rename = [el.value, k.fx.params[0].n];
+  fxParamDel(0, 1, 1);
+  out.left = k.fx.params.length;
+  fxCheck();
+  out.sent = [sent.length, sent[0].pid, sent[0].seq, sent[0].data.tracks[0].keys[1].fx.expr];
+  const e1 = {dataset:{k:'0_1'}, textContent:''}; errEls.push(e1);
+  fxChecked({seq: 0, errs:{'0_1':['fx.e_name','Q']}});
+  out.stale = e1.textContent;
+  fxChecked({seq: FX_SEQ, errs:{'0_1':['fx.e_name','Q']}});
+  out.err = e1.textContent;
+  SEL = Object.assign({}, SEL, {pid: 6});
+  out.otherObj = fxErrText('0_1');
+  process.stdout.write(JSON.stringify(out));
+JS
+File.write(path, script4)
+r4 = JSON.parse(`node "#{path}"`)
+eq('formula spenta: curva, casella «Formula», valori da scrivere', r4['before'], [true, false, true, true])
+eq('colore: niente formula', r4['color'], false)
+eq('spuntata: una formula lineare fino al valore di prima, editor chiuso, anteprima', r4['on'],
+   [true, 'v0 + (2.000 - v0) * u', 1, [true, 1]])
+eq('…niente pallini, il campo della formula, «dove la porta la formula» al posto del valore', r4['after'], [false, true, true, 1])
+eq('parametri nuovi: K, K2', r4['names'], %w[K K2])
+eq('si leggono: le altre tracce di questo oggetto (numeriche) e gli altri oggetti', r4['sources'],
+   [[5, 'tr.fx_self', ['size_y']], [1, 'Cubo', %w[size_z rot_z]]])
+eq('scelto il Cubo: la sua prima traccia, il valore', r4['picked'], { 'n' => 'K', 'pid' => 1, 'prop' => 'size_z', 'at' => 0 })
+eq('avanzamento della transizione 2: scelto, in 0–1', r4['paramHtml'], [true, true, true])
+eq('oggetto che non c\'è: niente', r4['unknown'], [0, ''])
+eq('nome del parametro: solo lettere, cifre e _', r4['rename'], %w[K2 K2])
+eq('parametro tolto', r4['left'], 1)
+eq('controllo chiesto a Ruby con i dati non ancora salvati', r4['sent'], [1, 5, 1, 'v0 + (2.000 - v0) * u'])
+eq('risposta vecchia: ignorata', r4['stale'], '')
+eq('errore mostrato', r4['err'], 'fx.e_name')
+eq('errori di un altro oggetto: non si mostrano', r4['otherObj'], '')
+
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

@@ -28,6 +28,10 @@ se acendem, cortes que atravessam um edifício.
   uma curva como as das transições decide como passa o tempo em todo o
   modelo: mais íngreme para um time-lapse, mais plana para uma câmara lenta,
   e a reprodução pode durar menos ou mais do que a linha do tempo.
+- **Fórmulas e ligações**: uma transição pode seguir uma fórmula em vez da
+  curva (por exemplo `v0 + (2 - v0) * u`) e, com parâmetros, ler outras
+  faixas, também de outros objetos: o seu valor ou o progresso de uma das suas
+  transições. A laje alarga enquanto o cubo cresce. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Inícios**: um objeto começa com a linha do tempo, depois de outro
   terminar (mais uma espera), ou **ao ser acionado**: um clique com a
   ferramenta *Acionar*. Pode recomeçar do início de cada vez, ou avançar e

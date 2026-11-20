@@ -28,6 +28,10 @@ che si accendono, sezioni che attraversano un edificio.
   curva come quelle delle transizioni decide come scorre il tempo di tutto
   il modello: più ripida per un time-lapse, più piatta per un rallentatore,
   e la riproduzione può durare meno o più della timeline.
+- **Formule e collegamenti**: una transizione può seguire una formula invece
+  della curva (per esempio `v0 + (2 - v0) * u`) e, con i parametri, leggere
+  altre tracce, anche di altri oggetti: il loro valore o l'avanzamento di una
+  loro transizione. La lastra si allarga mentre il cubo cresce. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Partenze**: un oggetto parte con la timeline, dopo che un altro ha finito
   (più un'attesa), oppure **quando lo si aziona**: un clic con lo strumento
   *Aziona*. Può ripartire ogni volta da capo, o andare avanti e la volta dopo

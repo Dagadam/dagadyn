@@ -13,12 +13,12 @@ module DagaDyn
     def self.t(k); k; end
   end
 end
-%w[config curves color tracks player].each { |f| require File.join(ROOT, 'dagadyn', 'lib', f) }
+%w[config curves formula color tracks player].each { |f| require File.join(ROOT, 'dagadyn', 'lib', f) }
 D = DagaDyn::Dyn
 
 $bad = 0
 def eq(what, got, want, tol = 1e-6)
-  ok = want.is_a?(String) ? got == want : (got - want).abs <= tol
+  ok = want.is_a?(Numeric) && got.is_a?(Numeric) ? (got - want).abs <= tol : got == want
   puts "#{ok ? 'ok ' : 'NO '} #{what}: #{got.is_a?(Float) ? got.round(6) : got} (atteso #{want})"
   $bad += 1 unless ok
 end
@@ -226,6 +226,116 @@ dd2 = D.sanitize_data('axes' => 'world', 'faces' => true, 'start' => { 'mode' =>
 eq('assi del mondo', dd2['axes'], 'world')
 eq('partenza sconosciuta → timeline', dd2['start']['mode'], 'time')
 eq('attesa negativa → 0', dd2['start']['wait'], 0.0)
+
+# ── Transizioni a formula (lib/formula.rb)
+def fx_val(src, vars = {}, names = vars.keys)
+  D.fx_run(D.fx_compile(src, names), vars)
+end
+def fx_err(src, names = [])
+  D.fx_compile(src, names)
+  'nessun errore'
+rescue D::FxError => err
+  "#{err.code} #{err.arg}".strip
+end
+eq('formula: precedenze', fx_val('1 + 2*3 - 4/2'), 5)
+eq('formula: meno davanti alla potenza', fx_val('-2^2'), -4)
+eq('formula: potenze da destra', fx_val('2^3^2'), 512)
+eq('formula: esponente negativo', fx_val('2^-1'), 0.5)
+eq('formula: seno in gradi', fx_val('sin(90)'), 1)
+eq('formula: max con tre argomenti', fx_val('max(1, 5, 3)'), 5)
+eq('formula: punto e virgola fra gli argomenti', fx_val('clamp(5; 0; 2)'), 2)
+eq('formula: × e − scritti a mano', fx_val('2 × 3 − 1'), 5)
+eq('formula: variabili', fx_val('v0 + (2 - v0) * u', { 'v0' => 1.0, 'u' => 0.25 }), 1.25)
+eq('formula: pi', fx_val('cos(180) * pi'), -Math::PI)
+eq('formula: decimali e notazione 1e3', fx_val('.5 + 1.5e1'), 15.5)
+eq('formula: divisione per zero → nil', fx_val('1/0').nil? ? 1 : 0, 1)
+eq('formula: radice di un negativo → nil', fx_val('sqrt(-1)').nil? ? 1 : 0, 1)
+eq('formula: potenza con risultato complesso → nil', fx_val('(-8)^(1/3)').nil? ? 1 : 0, 1)
+eq('errore: vuota', fx_err('  '), 'empty')
+eq('errore: finisce a metà', fx_err('2 +'), 'end')
+eq('errore: parentesi non chiusa', fx_err('(1 + 2'), 'end')
+eq('errore: 2u senza segno', fx_err('2u', ['u']), 'syntax u')
+eq('errore: carattere sconosciuto', fx_err('2 $ 3'), 'syntax $')
+eq('errore: funzione sconosciuta', fx_err('foo(1)'), 'name foo')
+eq('errore: nome sconosciuto', fx_err('K * 2'), 'name K')
+eq('errore: argomenti sbagliati', fx_err('sqrt(1, 2)'), 'args sqrt')
+eq('niente eval: codice Ruby è un errore', fx_err('`calc`'), 'syntax `')
+eq('niente eval: system(…) è una funzione sconosciuta', fx_err('system(1)'), 'name system')
+
+def fxk(v, dur, expr, params = [])
+  { 'v' => v, 'dur' => dur, 'preset' => 'linear', 'fx' => { 'on' => true, 'expr' => expr, 'params' => params } }
+end
+# Altezza da 1 m: la formula la porta a 3 m in 2 s (il valore di arrivo scritto, 9 m, non conta)
+f1 = track('size_z', [{ 'v' => 1 * M }, fxk(9 * M, 2.0, 'v0 + (3 - v0) * u')])
+eq('formula a metà (m)', D.track_value(f1, 1.0) / M, 2)
+eq('formula finita: resta dove l\'ha portata (m)', D.track_value(f1, 5.0) / M, 3)
+eq('formula con t e d', D.track_value(track('rot_z', [{ 'v' => 0 }, fxk(0, 4.0, '90 * t / d')]), 1.0), 22.5)
+# La transizione dopo riparte da dove l'ha lasciata la formula
+f2 = track('size_z', [{ 'v' => 1 * M }, fxk(9 * M, 2.0, 'v0 + (3 - v0) * u'), { 'v' => 0.5 * M, 'dur' => 1.0 }.merge(lin)])
+eq('dopo la formula: parte da 3 m', D.track_value(f2, 2.5) / M, 1.75)
+eq('…e arriva al suo stato', D.track_value(f2, 4.0) / M, 0.5)
+f3 = track('pos_x', [{ 'v' => 0 }, fxk(0, 1.0, '2 * u'), fxk(0, 1.0, 'v0 + u')])
+eq('due formule di fila: la seconda parte dalla prima', D.track_value(f3, 1.5) / M, 2.5)
+eq('in ciclo: ogni giro riparte dallo stato iniziale', D.track_value(track('pos_x', [{ 'v' => 0 }, fxk(0, 1.0, '2 * u')], loop: 'loop'), 1.25) / M, 0.5)
+eq('opacità in %: 50 → 0.5', D.track_value(track('opacity', [{ 'v' => 1 }, fxk(1, 1.0, '50')]), 0.5), 0.5)
+eq('formula non valida: resta al valore di partenza', D.track_value(track('size_z', [{ 'v' => 1 * M }, fxk(1, 1.0, '2 +')]), 0.5) / M, 1)
+eq('opacità mai oltre il 100%', D.track_value(track('opacity', [{ 'v' => 1 }, fxk(1, 1.0, '300')]), 0.5), 1.0)
+dfx = D.sanitize_data('tracks' => [{ 'prop' => 'color', 'keys' => [{ 'v' => '#ff0000' }, { 'v' => '#00ff00', 'fx' => { 'on' => true, 'expr' => '1' } }] },
+                                   { 'prop' => 'move_x', 'keys' => [{ 'v' => 0 }, { 'v' => 1, 'fx' => { 'on' => false, 'expr' => 'x' * 900,
+                                     'params' => [{ 'n' => 'K!', 'pid' => 5, 'prop' => 'color', 'at' => 99 }] } }] }])
+eq('colore: niente formula', dfx['tracks'][0]['keys'][1].key?('fx') ? 1 : 0, 0)
+eq('formula spenta: resta scritta (per riaccenderla)', dfx['tracks'][1]['keys'][1]['fx']['on'] ? 1 : 0, 0)
+eq('formula troppo lunga: tagliata', dfx['tracks'][1]['keys'][1]['fx']['expr'].size, D::FX_MAX_LEN)
+eq('parametro: nome ripulito', dfx['tracks'][1]['keys'][1]['fx']['params'][0]['n'], 'K')
+eq('parametro: traccia non numerica tolta', dfx['tracks'][1]['keys'][1]['fx']['params'][0]['prop'], '')
+eq('parametro: transizione oltre il massimo', dfx['tracks'][1]['keys'][1]['fx']['params'][0]['at'], D::MAX_KEYS)
+
+# Parametri: il Cubo (pid 1) cresce da 1 a 2 m in 2 s; la larghezza del
+# Solido (pid 2) è 0.5 + K/2 con K = altezza del Cubo, per 1 s
+def fxp(n, pid, prop, at = 0); { 'n' => n, 'pid' => pid, 'prop' => prop, 'at' => at }; end
+def fxobj(pid, tracks, mode: 'time', after: 0)
+  [Ent.new(pid), D.sanitize_data('start' => { 'mode' => mode, 'after' => after }, 'tracks' => tracks)]
+end
+cubo  = fxobj(1, [{ 'prop' => 'size_z', 'keys' => [{ 'v' => 1 * M }, { 'v' => 2 * M, 'dur' => 2.0 }.merge(lin)] }])
+solido = fxobj(2, [{ 'prop' => 'size_x', 'keys' => [{ 'v' => 1 * M }, fxk(0, 1.0, '0.5 + K/2', [fxp('K', 1, 'size_z')])] }])
+dopo  = fxobj(3, [{ 'prop' => 'size_y', 'keys' => [{ 'v' => 1 * M }, fxk(0, 3.0, 'K * 10', [fxp('K', 1, 'size_z', 1)])] }],
+              mode: 'after', after: 1)
+SF = { items: {}, by_pid: {}, c0: 0.0, ext_c0: 0.0, ufac: M }
+[cubo, solido, dopo].each { |pr| it = item(pr); SF[:items][pr[0]] = it; SF[:by_pid][pr[0].persistent_id] = it }
+SF[:items].each { |e, it| it[:static] = D.chain_starts([cubo, solido, dopo])[e.persistent_id] }
+def fx_at(s, pid, t)
+  it = s[:by_pid][pid]
+  w = D.fx_world_session(s)
+  local = D.item_local(s, it, t)
+  D.track_value(it[:tracks][0], local, { w: w, off: t - local, f: w[:f] }) / M
+end
+eq('Solido a 0 s: 0.5 + 1/2', fx_at(SF, 2, 0.0), 1.0)
+eq('Solido a 0.5 s: segue il Cubo (1.25 m)', fx_at(SF, 2, 0.5), 1.125)
+eq('Solido a 1 s', fx_at(SF, 2, 1.0), 1.25)
+eq('Solido dopo la sua transizione: fermo dov\'era a 1 s', fx_at(SF, 2, 1.8), 1.25)
+eq('in catena dopo il Cubo (parte a 2 s): K = avanzamento della sua transizione, finita', fx_at(SF, 3, 2.5), 10)
+eq('avanzamento a metà della transizione del Cubo', D.track_progress(SF[:by_pid][1][:tracks][0], 1.0, 1), 0.5)
+eq('avanzamento prima del ritardo', D.track_progress(track('pos_x', [{ 'v' => 0 }, { 'v' => 1, 'dur' => 2.0 }], delay: 1.0), 0.5, 1), 0.0)
+eq('avanzamento della seconda transizione', D.track_progress(s3, 2.0, 2), 0.5)
+eq('avanzamento di una transizione che non c\'è: nil', D.track_progress(s3, 2.0, 3).nil? ? 1 : 0, 1)
+# Collegamento circolare: niente giro infinito, si resta al valore di partenza
+ca = fxobj(11, [{ 'prop' => 'size_z', 'keys' => [{ 'v' => 1 * M }, fxk(0, 1.0, 'K + 1', [fxp('K', 12, 'size_x')])] }])
+cb = fxobj(12, [{ 'prop' => 'size_x', 'keys' => [{ 'v' => 2 * M }, fxk(0, 1.0, 'K + 1', [fxp('K', 11, 'size_z')])] }])
+SCY = { items: {}, by_pid: {}, c0: 0.0, ext_c0: 0.0, ufac: M }
+[ca, cb].each { |pr| it = item(pr); it[:static] = 0.0; SCY[:items][pr[0]] = it; SCY[:by_pid][pr[0].persistent_id] = it }
+eq('giro chiuso: si calcola lo stesso, senza bloccarsi', fx_at(SCY, 11, 0.5).finite? ? 1 : 0, 1)
+gr = { 11 => ca[1], 12 => cb[1] }
+eq('pannello: giro chiuso segnalato', D.fx_problems(11, ca[1], gr), { '0_1' => ['fx.e_cycle', ''] })
+gr2 = { 1 => cubo[1], 2 => solido[1] }
+eq('pannello: tutto a posto', D.fx_problems(2, solido[1], gr2), {})
+bad = ->(expr, params) { D.fx_problems(2, D.sanitize_data('tracks' => [{ 'prop' => 'size_x', 'keys' => [{ 'v' => 1 }, fxk(0, 1.0, expr, params)] }]), gr2)['0_1'] }
+eq('pannello: errore di scrittura', bad.call('K +', [fxp('K', 1, 'size_z')]), ['fx.e_end', ''])
+eq('pannello: nome sconosciuto', bad.call('Q', [fxp('K', 1, 'size_z')]), ['fx.e_name', 'Q'])
+eq('pannello: parametro senza oggetto', bad.call('K', [fxp('K', 0, '')]), ['fx.e_src', 'K'])
+eq('pannello: traccia che non c\'è più', bad.call('K', [fxp('K', 1, 'size_y')]), ['fx.e_gone', 'K'])
+eq('pannello: transizione che non c\'è più', bad.call('K', [fxp('K', 1, 'size_z', 2)]), ['fx.e_gone', 'K'])
+eq('pannello: nome riservato', bad.call('u', [fxp('u', 1, 'size_z')]), ['fx.e_pname', 'u'])
+eq('pannello: nome ripetuto', bad.call('K', [fxp('K', 1, 'size_z'), fxp('K', 1, 'size_z', 1)]), ['fx.e_pname', 'K'])
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

@@ -29,6 +29,10 @@ snitt som vandrar genom en byggnad.
   kurva som för övergångarna hur tiden går i hela modellen: brantare för en
   timelapse, flackare för slow motion, och uppspelningen kan vara kortare
   eller längre än tidslinjen.
+- **Formler och kopplingar**: en övergång kan följa en formel i stället för
+  kurvan (till exempel `v0 + (2 - v0) * u`) och via parametrar läsa andra spår,
+  även från andra objekt: deras värde eller förloppet i en av deras
+  övergångar. Plattan blir bredare medan kuben växer. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Start**: ett objekt startar med tidslinjen, efter att ett annat är klart
   (plus en väntan), eller **när det används**: ett klick med verktyget
   *Använd*. Det kan börja om från början varje gång, eller gå framåt och

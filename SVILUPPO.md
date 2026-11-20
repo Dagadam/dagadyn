@@ -12,6 +12,8 @@ dagadyn/lib/
   config.rb             costanti, DEFAULT, proprietà animabili (PROPS)
   i18n.rb  settings.rb  win32.rb      come in DagaWASD (lingue, settings.json, registro, appunti)
   curves.rb             curve PCHIP con punti ad angolo, preset   ← stessa copia in panel.html
+  formula.rb            transizioni a formula: interprete (niente eval), parametri che leggono altre tracce,
+                        controllo per il pannello (errori, collegamenti circolari)
   color.rb              colori, miscela in OKLab
   tracks.rb             dati negli attributi dell'istanza (dizionario "DagaDyn", chiave "data");
                         velocità del tempo in quelli del modello (chiave "time")
@@ -24,7 +26,8 @@ dagadyn/lib/
 dagadyn/panel.html      pannello: telaio di DagaWASD + timeline, tracce, editor delle curve
 dagadyn/lang/           36 lingue (index.json come DagaWASD)
 tools/test_curves.rb    le curve di Ruby e del pannello devono coincidere (serve node)
-tools/test_panel.rb     funzioni del pannello in node con un DOM finto (editor delle curve e selezione, timeline)
+tools/test_panel.rb     funzioni del pannello in node con un DOM finto (editor delle curve e selezione, timeline,
+                        transizioni a formula)
 tools/test_engine.rb    valori delle tracce nel tempo, partenze, azionati, senza SketchUp
 tools/test_link.rb      il motore in una SketchUp finta (tools/fake_sketchup.rb) e l'aggancio a DagaWASD
 tools/test_live.rb      nel SketchUp vero, dal ponte di DagaWASD: tempi, salvataggio, Ctrl+Z, File › Nuovo
@@ -32,7 +35,9 @@ tools/test_live.rb      nel SketchUp vero, dal ponte di DagaWASD: tempi, salvata
                         modello di partenza; ne lascia uno nuovo)
 tools/crea_rbz.rb       pacchetto dist/dagadyn-<versione>.rbz (vuole la sezione nel CHANGELOG)
 tools/esempio_cameretta.rb  costruisce in SketchUp la cameretta di examples/bedroom.skp (tutte le funzioni)
-tools/crea_esempio.rb   dal ponte di DagaWASD, in un modello nuovo: la costruisce e la salva (formato 2021)
+tools/esempio_formule.rb    costruisce examples/formulas.skp (transizioni a formula, tre oggetti in serie)
+tools/crea_esempio.rb   dal ponte di DagaWASD, in un modello nuovo: costruisce un esempio e lo salva (formato 2021);
+                        senza argomento la cameretta, con «formulas» le formule
 ```
 
 ## Sviluppo
@@ -88,5 +93,14 @@ li segue entro un secondo. Menu e barra nascono prima che DagaWASD sia caricata:
   la meta supera T prima della fine; oggetti e barra usano `t`. Spostare la barra cerca il punto della
   curva che dà quell'istante, il più vicino a dov'era (`unwarp`); se cambiano la curva o la durata della
   timeline, `warp_keep` lascia la timeline dov'è e cambia solo da lì in avanti.
+- Transizioni a formula (`lib/formula.rb`): accanto alla curva, nello stato di arrivo, `fx = {on, expr,
+  params}`. Un interprete proprio (mai `eval`: le formule arrivano dentro file .skp di altri) traduce la
+  formula in un albero, una volta (`fx_cached`). `track_value(tr, t, ctx)`: `ctx` dice da dove leggere gli
+  altri oggetti (`fx_world_session` nel Play, `fx_world_model` per le traiettorie) e a che istante della
+  timeline corrisponde il tempo locale (`off`). I parametri si leggono nello stesso istante della timeline;
+  il valore da cui parte una transizione dopo una formula è quello della formula alla sua fine, con i
+  parametri di quel momento (`seg_from`). Ogni fotogramma ricorda i valori già letti (`memo`) e un giro
+  chiuso (A legge B che legge A nello stesso istante) dà nil invece di un ciclo infinito: l'oggetto resta al
+  valore di partenza, e `fx_check` lo segnala nel pannello prima ancora di salvare.
 - Colore, opacità, visibilità, tag e piani di sezione cambiano il modello: vanno in operazioni trasparenti
   accodate alla prima voce della sessione. Dopo un Ctrl+Z la sessione apre una voce nuova.

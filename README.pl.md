@@ -29,6 +29,10 @@ które się zapalają, przekroje, które przesuwają się przez budynek.
   przejściach, która decyduje, jak płynie czas w całym modelu: bardziej
   stroma dla timelapse, bardziej płaska dla zwolnionego tempa, a
   odtwarzanie może trwać krócej lub dłużej niż oś czasu.
+- **Wzory i powiązania**: przejście może podążać za wzorem zamiast krzywej
+  (na przykład `v0 + (2 - v0) * u`) i dzięki parametrom czytać inne ścieżki,
+  także innych obiektów: ich wartość lub postęp jednego z ich przejść. Płyta
+  poszerza się, gdy sześcian rośnie. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Start**: obiekt rusza z osią czasu, po zakończeniu innego (plus
   oczekiwanie) albo **po użyciu**: kliknięcie narzędziem *Użyj*. Może za
   każdym razem zaczynać od początku albo iść do przodu, a następnym razem

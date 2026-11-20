@@ -1,6 +1,11 @@
-# Example: a bedroom where everything moves
+# Examples
 
 **English** · [Italiano](#italiano)
+
+- [A bedroom where everything moves](#a-bedroom-where-everything-moves) (`bedroom.skp`)
+- [Formulas: objects that read each other](#formulas-objects-that-read-each-other) (`formulas.skp`)
+
+## A bedroom where everything moves
 
 [`bedroom.skp`](bedroom.skp) is a small bedroom that shows every feature of
 DagaDyn. Open it in SketchUp 2023 or later with DagaDyn installed.
@@ -51,9 +56,35 @@ The model is built by [`tools/esempio_cameretta.rb`](../tools/esempio_cameretta.
 `ruby tools/crea_esempio.rb` builds it again in a new SketchUp model through
 DagaWASD's bridge and saves it here.
 
+## Formulas: objects that read each other
+
+[`formulas.skp`](formulas.skp) shows transitions that follow a **formula**
+instead of the dotted curve, and objects that read the tracks of other
+objects. Press **▶**, then select an object: in its transition *ƒ Formula*
+is ticked, with the formula and its parameters.
+
+| Objects | What they show |
+|---|---|
+| 1 Cube → 2 Slab → 3 Blade | **three in series**: the cube grows and shrinks with the dots; the slab's width is `0.2 + K`, K = the cube's height; the blade turns by `(L - 0.8) * 120`, L = the slab's width |
+| Elevator → Counterweight, Progress bar | a parameter reads the **value** (the counterweight does `-H`, H = the elevator's height: it goes the other way) or the **progress** from 0 to 1 of a transition (the bar does `0.05 + 2 * P`: it grows evenly while the elevator speeds up and slows down) |
+| Pendulum | a formula alone, no parameters: `30 * sin(180 * t)` (t seconds, sine in degrees) |
+| Wave 1–6 | the same formula shifted by 45° from block to block: `0.3 + 0.3 * sin(180 * t - 45 * i)` |
+
+The formulas work in the model's unit, here metres. Their transitions are
+in a loop: an ended formula leaves the object where it took it, a loop
+keeps it following.
+
+The model is built by [`tools/esempio_formule.rb`](../tools/esempio_formule.rb);
+`ruby tools/crea_esempio.rb formulas` builds it again.
+
 ---
 
 ## Italiano
+
+- [Una cameretta in cui si muove tutto](#una-cameretta-in-cui-si-muove-tutto) (`bedroom.skp`)
+- [Formule: oggetti che si leggono l'un l'altro](#formule-oggetti-che-si-leggono-lun-laltro) (`formulas.skp`)
+
+### Una cameretta in cui si muove tutto
 
 [`bedroom.skp`](bedroom.skp) è una cameretta che mostra tutte le funzioni di
 DagaDyn. Aprila in SketchUp 2023 o successivo, con DagaDyn installata.
@@ -114,3 +145,29 @@ e il tasto Aziona di DagaWASD fa partire quelli che guardi.
 Il modello lo costruisce [`tools/esempio_cameretta.rb`](../tools/esempio_cameretta.rb);
 `ruby tools/crea_esempio.rb` lo rifà in un modello nuovo di SketchUp
 attraverso il ponte di DagaWASD e lo salva qui.
+
+### Formule: oggetti che si leggono l'un l'altro
+
+[`formulas.skp`](formulas.skp) mostra transizioni che seguono una
+**formula** invece della curva a pallini, e oggetti che leggono le tracce
+di altri oggetti. Premi **▶**, poi seleziona un oggetto: nella sua
+transizione è spuntato *ƒ Formula*, con la formula e i suoi parametri.
+
+- **1 Cube → 2 Slab → 3 Blade**: **tre in serie**. Il cubo cresce e cala
+  con i pallini; la lastra è larga `0.2 + K`, K = altezza del cubo; la pala
+  gira di `(L - 0.8) * 120`, L = larghezza della lastra.
+- **Elevator → Counterweight, Progress bar**: un parametro legge il
+  **valore** (il contrappeso fa `-H`, H = altezza dell'ascensore: va al
+  contrario) oppure l'**avanzamento** da 0 a 1 di una transizione (la barra
+  fa `0.05 + 2 * P`: cresce regolare mentre l'ascensore accelera e frena).
+- **Pendulum**: solo la formula, senza parametri: `30 * sin(180 * t)` (t in
+  secondi, seno in gradi).
+- **Wave 1–6**: la stessa formula sfasata di 45° da un blocco all'altro:
+  `0.3 + 0.3 * sin(180 * t - 45 * i)`.
+
+Le formule lavorano nell'unità del modello, qui metri. Le loro transizioni
+sono in ciclo: finita una formula l'oggetto resta dove l'ha portato, il
+ciclo la fa continuare.
+
+Il modello lo costruisce [`tools/esempio_formule.rb`](../tools/esempio_formule.rb);
+`ruby tools/crea_esempio.rb formulas` lo rifà.

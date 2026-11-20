@@ -10,7 +10,8 @@ require 'json'
 #
 #   config     costanti, DEFAULT, proprietà   i18n       lingue
 #   settings   settings.json, registro        win32      appunti, monitor
-#   curves     curve di transizione, preset   color      colori, OKLab
+#   curves     curve di transizione, preset   formula    transizioni a formula
+#   color      colori, OKLab
 #   tracks     tracce negli attributi         props      valori di riposo, applicazione
 #   player     motore: sessione, tempo        observers  selezione, salvataggio
 #   api        collegamento con DagaWASD      paths      traiettorie, strumento Aziona
@@ -25,7 +26,7 @@ require 'json'
 # nuovo menu, barra e osservatori.
 unless defined?(DagaDyn::Dyn::PLUGIN_DIR)
   %w[
-    config i18n settings win32 curves color tracks props player api paths observers panel ui
+    config i18n settings win32 curves formula color tracks props player api paths observers panel ui
   ].each do |f|
     path = File.join(__dir__.dup.force_encoding('UTF-8'), 'lib', f)   # percorsi con lettere accentate
     # Sketchup.require e non require: con la firma i file possono diventare .rbe cifrati

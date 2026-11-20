@@ -28,6 +28,10 @@ lampen die aangaan, sneden die door een gebouw schuiven.
   curve zoals bij de overgangen hoe de tijd in het hele model verloopt:
   steiler voor een timelapse, vlakker voor slow motion, en het afspelen kan
   korter of langer duren dan de tijdlijn.
+- **Formules en koppelingen**: een overgang kan een formule volgen in plaats
+  van de curve (bijvoorbeeld `v0 + (2 - v0) * u`) en via parameters andere
+  sporen lezen, ook van andere objecten: hun waarde of de voortgang van een
+  van hun overgangen. De plaat wordt breder terwijl de kubus groeit. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Starten**: een object start met de tijdlijn, nadat een ander klaar is
   (plus een wachttijd), of **bij bedienen**: een klik met het gereedschap
   *Bedienen*. Het kan elke keer opnieuw beginnen, of vooruit gaan en de

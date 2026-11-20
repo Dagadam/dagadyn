@@ -1,19 +1,27 @@
-# DagaDyn — Rifà examples/bedroom.skp nel SketchUp vero, attraverso il ponte
-# di DagaWASD (Sistema › Ponte Claude acceso):
+# DagaDyn — Rifà un esempio di examples/ nel SketchUp vero, attraverso il
+# ponte di DagaWASD (Sistema › Ponte Claude acceso):
 #
-#   ruby tools/crea_esempio.rb
+#   ruby tools/crea_esempio.rb              la cameretta: examples/bedroom.skp (tools/esempio_cameretta.rb)
+#   ruby tools/crea_esempio.rb formulas     le formule:   examples/formulas.skp (tools/esempio_formule.rb)
 #
 # Parte solo con un modello NUOVO aperto (File › Nuovo, mai salvato, al più
-# con la figura del modello di partenza). Ci costruisce la cameretta
-# (tools/esempio_cameretta.rb) e la salva in examples/bedroom.skp nel formato
-# di SketchUp 2021: il modello aperto diventa quel file. Toglie dal modello
+# con la figura del modello di partenza). Ci costruisce l'esempio e lo salva
+# in examples/ nel formato di SketchUp 2021: il modello aperto diventa quel
+# file. Toglie dal modello
 # ciò che non serve a nessuno (città e paese della posizione, dizionari di
 # altre estensioni).
 require 'json'
 require 'net/http'
 
 ROOT = File.expand_path('..', __dir__)
-SKP  = File.join(ROOT, 'examples', 'bedroom.skp').tr('\\', '/')
+ESEMPI = {
+  'bedroom'  => ['esempio_cameretta.rb', 'DagaDynEsempio'],
+  'formulas' => ['esempio_formule.rb', 'DagaDynFormule'],
+}.freeze
+NOME = ARGV[0] || 'bedroom'
+abort "esempi: #{ESEMPI.keys.join(', ')}" unless ESEMPI.key?(NOME)
+COSTRUTTORE, MODULO = ESEMPI[NOME]
+SKP  = File.join(ROOT, 'examples', "#{NOME}.skp").tr('\\', '/')
 INFO_PATH = File.join(ENV['APPDATA'] || Dir.home, 'DagaWASD', 'bridge.json')
 abort "#{INFO_PATH} non esiste: accendi il ponte in DagaWASD (Sistema › Ponte Claude)" unless File.exist?(INFO_PATH)
 INFO = JSON.parse(File.read(INFO_PATH, encoding: 'UTF-8'))
@@ -49,8 +57,8 @@ abort 'Serve un modello nuovo: in SketchUp File › Nuovo, poi rilancia' unless 
 abort 'DagaDyn o DagaWASD stanno animando o registrando: fermali, poi rilancia' if pre['occupato']
 
 r = su(<<~RB)
-  load #{File.join(ROOT, 'tools', 'esempio_cameretta.rb').tr('\\', '/').inspect}
-  n = DagaDynEsempio.costruisci(op: false)
+  load #{File.join(ROOT, 'tools', COSTRUTTORE).tr('\\', '/').inspect}
+  n = #{MODULO}.costruisci(op: false)
   m = Sketchup.active_model
   m.definitions.purge_unused
   m.materials.purge_unused

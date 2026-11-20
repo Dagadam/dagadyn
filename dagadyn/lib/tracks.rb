@@ -27,7 +27,8 @@ module DagaDyn
     #           { "v": 157.48,                  stato successivo…
     #             "dur": 1.0,                   …raggiunto in dur secondi
     #             "preset": "ease_in_out",      curva scelta (o "custom")
-    #             "curve": [[0,0],…,[1,1]] }    punti della curva (lib/curves.rb)
+    #             "curve": [[0,0],…,[1,1]],     punti della curva (lib/curves.rb)
+    #             "fx": { "on": true, … } }     oppure una formula (lib/formula.rb)
     #         ] } ] }
     #
     # Valori nelle unità interne: lunghezze in pollici (come SketchUp),
@@ -236,6 +237,8 @@ module DagaDyn
           preset        = k['preset'].to_s
           out['preset'] = PRESET_POINTS.key?(preset) || preset == 'custom' ? preset : 'linear'
           out['curve']  = sanitize_points(k['curve'].is_a?(Array) ? k['curve'] : preset_points(out['preset']))
+          fx = sanitize_fx(prop, k['fx'])
+          out['fx'] = fx if fx
         end
         out
       end
