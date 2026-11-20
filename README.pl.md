@@ -10,6 +10,8 @@ które się zapalają, przekroje, które przesuwają się przez budynek.
 
 ⬇ **Pobierz**: [najnowsza wersja](https://github.com/Dagadam/dagadyn/releases/latest) (wszystkie wersje: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Przykład**: [sypialnia, w której wszystko się rusza](examples/README.md) (`examples/bedroom.skp`), ze wszystkimi funkcjami DagaDyn.
+
 ## Co robi
 
 - **Właściwości**: przesunięcie (od miejsca, gdzie stoi obiekt), położenie,
@@ -23,6 +25,10 @@ które się zapalają, przekroje, które przesuwają się przez budynek.
   przeciąganie punktów.
 - **Oś czasu**: Odtwórz, Pauza, Stop i pasek do oglądania dowolnej chwili.
   Raz, w pętli albo tam i z powrotem, z wybraną prędkością.
+- **Prędkość czasu**: przycisk **⏱** obok osi czasu otwiera krzywą jak przy
+  przejściach, która decyduje, jak płynie czas w całym modelu: bardziej
+  stroma dla timelapse, bardziej płaska dla zwolnionego tempa, a
+  odtwarzanie może trwać krócej lub dłużej niż oś czasu.
 - **Start**: obiekt rusza z osią czasu, po zakończeniu innego (plus
   oczekiwanie) albo **po użyciu**: kliknięcie narzędziem *Użyj*. Może za
   każdym razem zaczynać od początku albo iść do przodu, a następnym razem

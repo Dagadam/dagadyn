@@ -428,6 +428,8 @@ body.rtl .note{border-left:none;border-right:3px solid var(--acc);border-radius:
 .tbake:disabled{opacity:.4;cursor:default}
 /* timeline vuota (solo oggetti azionati): al posto di barra e timer, una riga che lo dice */
 .tempty{flex:1 1 auto;min-width:0;font-size:.867rem;color:var(--m2);line-height:1.3}
+/* velocità del tempo: acceso quando il modello ha una curva sua */
+.tbtn.warp.on{border-color:var(--acc);color:var(--acc-tx);box-shadow:0 0 0 3px var(--acc-bg)}
 .transport [hidden]{display:none}
 
 /* ══ OGGETTO E TRACCE ══ */
@@ -531,6 +533,12 @@ button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
 .pbtn.act{border-color:var(--acc);background:var(--acc-bg);color:var(--hi)}
 .pbtn svg{width:54px;height:30px}
 .pbtn path{stroke:currentColor;fill:none;stroke-width:2}
+.cvprev .ball.ghost{background:var(--m2);box-shadow:none;opacity:.5}
+/* velocità del tempo: quanto dura la riproduzione */
+.cvdur{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:0 0 10px;font-size:.9rem;color:var(--m1)}
+.cvdur .f{display:flex;align-items:center;gap:6px}
+.cvdur b{color:var(--t1);font-weight:600;font-variant-numeric:tabular-nums}
+.cvdur[hidden],.mbtns [hidden]{display:none}
 .cvtips{font-size:.8rem;color:var(--m2);margin-top:10px;line-height:1.45}
 .cvtips kbd{display:inline-block;background:var(--s4);border:1px solid var(--l3);border-radius:4px;padding:0 5px;font:600 .75rem var(--font);color:var(--acc-tx)}
 
@@ -556,6 +564,7 @@ button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
          oninput="scrubInput(this)" onchange="scrubEnd(this)">
   <span class="ttime" id="tpTime">0.00 / 0.00 s</span>
   <span class="tempty" id="tpEmpty" hidden></span>
+  <button class="tbtn warp" id="tpWarp" hidden onclick="openTime()">⏱</button>
   <button class="tbake" id="tpBake" data-lv="2" onclick="tpCmd('bake')">—</button>
 </div>
 
@@ -584,12 +593,13 @@ button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
   </div>
 </div>
 
-<!-- Editor della curva di una transizione (openCurve) -->
+<!-- Editor della curva di una transizione (openCurve) o della velocità del tempo (openTime) -->
 <div class="modal" id="curvem" onclick="if(event.target === this) closeCurve()">
   <div class="card curve" role="dialog" aria-modal="true" aria-labelledby="cvTitle">
     <button class="x" id="cvX" onclick="closeCurve()">✕</button>
     <h2 id="cvTitle"></h2>
     <div class="cvhead" id="cvHead"></div>
+    <div class="cvdur" id="cvDur" hidden></div>
     <div class="cvbox"><svg id="cvsvg" viewBox="0 0 560 330"></svg></div>
     <div class="cvinfo"><span id="cvPos"></span><span id="cvName"></span></div>
     <div class="cvprev" id="cvPrev"></div>
@@ -597,6 +607,7 @@ button.kdot:hover{box-shadow:0 0 0 4px var(--acc)}
     <div class="mbtns">
       <button class="btn btn-sm" id="cvMirror" onclick="curveMirror()"></button>
       <button class="btn btn-sm" id="cvAll" onclick="curveToAll()"></button>
+      <button class="btn btn-sm" id="cvNormal" hidden onclick="timeNormal()"></button>
       <button class="btn btn-go" id="cvDone" onclick="closeCurve()"></button>
     </div>
     <div class="cvtips" id="cvTips"></div>
@@ -2039,6 +2050,8 @@ function setTransport(s){
   bk.textContent = T('tp.bake'); bk.title = T('tp.bake_h');
   sl.title = T('tp.scrub');
   setRunning(TP.state);
+  warpBtn();
+  if(CV && CV.time) timeTotalChanged();
 }
 /* Scrub: al più ~30 richieste al secondo, l'ultima sempre */
 function scrubInput(el){
@@ -2060,10 +2073,12 @@ function tpMain(){
   if(TP.state !== 'play' && (TP.total || 0) <= 0) tpCmd('use_tool');
   else tpCmd('toggle');
 }
-/* Comandi della timeline: prima le modifiche alle tracce ancora in attesa
-   (Ruby esegue le chiamate nell'ordine in cui arrivano) */
+/* Comandi della timeline: prima le modifiche alle tracce (e alla velocità
+   del tempo) ancora in attesa (Ruby esegue le chiamate nell'ordine in cui
+   arrivano) */
 function tpCmd(name){
   if(DIRTY) saveTracks();
+  if(TW_DIRTY) saveTime();
   sketchup[name]();
 }
 /* Etichetta di stato in alto (i comandi sono solo nella timeline) */
@@ -2101,7 +2116,8 @@ function setSelection(s){
   // Editor delle curve aperto: CV.i/CV.j indicano una traccia dell'oggetto
   // di prima. Se il nuovo non ha quella transizione (altro oggetto, o tracce
   // tolte da un Ctrl+Z) si chiude, invece di scrivere sulla traccia sbagliata.
-  if(CV){
+  // La velocità del tempo è del modello, non dell'oggetto: resta aperta.
+  if(CV && !CV.time){
     const same = s.kind === 'obj' && SEL.kind === 'obj' && s.pid === SEL.pid;
     const tr = same && s.data && s.data.tracks[CV.i];
     if(!(tr && CV.j > 0 && tr.keys[CV.j])){
@@ -2397,8 +2413,21 @@ function keyDel(i, j){
 /* ═══════════════════════════════════════════════════════════════
    SCENA — gli oggetti animati del modello (setScene da Ruby)
 ═══════════════════════════════════════════════════════════════ */
-let SCENE = {objects:[], total:0};
-function setScene(s){ SCENE = s || {objects:[], total:0}; renderScene(); }
+let SCENE = {objects:[], total:0, time:null};
+function setScene(s){
+  SCENE = s || {objects:[], total:0, time:null};
+  renderScene();
+  warpBtn();
+  // editor della velocità del tempo aperto: la curva salvata (o tornata
+  // indietro con Ctrl+Z), se non la si sta cambiando proprio adesso
+  if(CV && CV.time && !TW_DIRTY && CV.drag === null){
+    TW = timeData(SCENE.time);
+    cvRange();
+    renderTimeDur();
+    renderCurve();
+    renderPresets();
+  }
+}
 function renderScene(){
   const box = document.getElementById('scenePane');
   if(!box) return;
@@ -2433,11 +2462,15 @@ function pickObj(pid){
    ultimo punto fissi (0,0) e (1,1). Con la griglia attiva i punti vi si
    agganciano (Maiusc: liberi). Sotto, una pallina percorre la
    transizione con la curva e la durata vere.
+   Lo stesso editor fa la velocità del tempo (CV.time, qui sotto openTime):
+   allora la curva è TW, non quella di una transizione.
 ═══════════════════════════════════════════════════════════════ */
 const CV_W = 560, CV_H = 330, CV_L = 62, CV_R = 18, CV_T = 16, CV_B = 30;
-let CV = null;   // {i, j, lo, hi, drag, hover, t0}
+let CV = null;   // {i, j, lo, hi, drag, hover, t0}, oppure {time:true, T, …}
 
-function cvKey(){ return SEL.data.tracks[CV.i].keys[CV.j]; }
+function cvKey(){ return CV.time ? TW : SEL.data.tracks[CV.i].keys[CV.j]; }
+/* I secondi dell'asse orizzontale: la transizione, o la riproduzione della timeline */
+function cvDur(){ return CV.time ? timeLen() : +cvKey().dur || 0; }
 function cvX(x){ return CV_L + x * (CV_W - CV_L - CV_R); }
 function cvY(y){ return CV_T + (CV.hi - y) / (CV.hi - CV.lo) * (CV_H - CV_T - CV_B); }
 function cvFromPx(px, py){
@@ -2467,8 +2500,11 @@ function openCurve(i, j){
   document.getElementById('cvMirror').textContent = '⇄ ' + T('cv.mirror');
   document.getElementById('cvAll').textContent = T('cv.all');
   document.getElementById('cvAll').hidden = tr.keys.length <= 2;
+  document.getElementById('cvNormal').hidden = true;
+  document.getElementById('cvDur').hidden = true;
   document.getElementById('cvDone').textContent = T('cv.done');
   document.getElementById('cvTips').innerHTML = esc(T('cv.tips')).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
+  document.getElementById('cvPos').textContent = '';
   renderCurve();
   renderPresets();
   document.getElementById('curvem').classList.add('open');
@@ -2476,8 +2512,15 @@ function openCurve(i, j){
 }
 function closeCurve(){
   if(!CV) return;
+  const time = CV.time;
   CV = null;
   document.getElementById('curvem').classList.remove('open');
+  if(time){
+    saveTime();                                    // l'ultima modifica, subito
+    const b = document.getElementById('tpWarp');
+    if(b && !b.hidden) b.focus();
+    return;
+  }
   renderObj();
 }
 
@@ -2496,11 +2539,14 @@ function renderCurve(){
     const main = Math.abs(yy) < 1e-9 || Math.abs(yy - 1) < 1e-9;
     if(!main && Math.round(yy * g) !== yy * g) continue;
     s += `<line class="${main ? 'g1' : 'g'}" x1="${CV_L}" x2="${CV_W - CV_R}" y1="${py}" y2="${py}"/>`;
-    if(main || Math.abs(yy * 2 - Math.round(yy * 2)) < 1e-9)
-      s += `<text class="gl" x="${CV_L - 6}" y="${py + 4}" text-anchor="end">${main ? (yy ? T('tr.to') : T('tr.from')) : yy}</text>`;
+    if(main || Math.abs(yy * 2 - Math.round(yy * 2)) < 1e-9){
+      // velocità del tempo: in verticale i secondi della timeline
+      const lab = CV.time ? `${fmtSec(yy * timeTotal())} s` : main ? (yy ? T('tr.to') : T('tr.from')) : yy;
+      s += `<text class="gl" x="${CV_L - 6}" y="${py + 4}" text-anchor="end">${esc(String(lab))}</text>`;
+    }
   }
   s += `<text class="gl" x="${CV_L}" y="${CV_H - 9}">0 s</text>`
-     + `<text class="gl" x="${CV_W - CV_R}" y="${CV_H - 9}" text-anchor="end">${fmtSec(k.dur)} s</text>`;
+     + `<text class="gl" x="${CV_W - CV_R}" y="${CV_H - 9}" text-anchor="end">${fmtSec(cvDur())} s</text>`;
   const c = curvePrepare(pts);
   let d = '';
   for(let n = 0; n <= 200; n++){
@@ -2533,7 +2579,7 @@ function curveSet(pts, preset){
   const k = cvKey();
   k.curve = curveSanitize(pts);
   k.preset = preset || 'custom';
-  tracksChanged(false);
+  if(CV.time) timeChanged(); else tracksChanged(false);
   renderCurve();
   renderPresets();
 }
@@ -2557,25 +2603,39 @@ function curveToAll(){
 }
 
 /* Pallina dell'anteprima e testina sulla curva */
+/* Velocità del tempo: la pallina è la timeline (da 0 alla sua fine) mentre
+   la riproduzione dura P; quella grigia è il tempo normale, un secondo
+   della timeline per secondo. Le riproduzioni lunghe si vedono accelerate
+   (al più 12 s), tutte e due allo stesso modo. */
 function cvTick(now){
   if(!CV) return;
-  const k = cvKey(), tr = SEL.data.tracks[CV.i];
-  const D = Math.min(6, Math.max(0.4, +k.dur || 1)) * 1000, P = 600;
+  const k = cvKey(), time = CV.time, tr = time ? null : SEL.data.tracks[CV.i];
+  const D = (time ? Math.min(12, Math.max(1, timeLen() || 1)) : Math.min(6, Math.max(0.4, +k.dur || 1))) * 1000, P = 600;
   const ph = ((now - CV.t0) % (D + P)) / D, u = Math.min(1, ph);
   const e = curveEval(curvePrepare(k.curve), u);
   const box = document.getElementById('cvPrev');
-  const a = tr.keys[CV.j - 1].v, b = k.v, p = tr.prop;
-  const lab = v => kindOf(p) === 'color' ? v : (fmtVal(p, v) + ' ' + unitOf(p)).trim();
   if(!box.dataset.ok){
     box.innerHTML = `<div class="rail"></div><div class="mk" style="left:15%"></div><div class="mk" style="left:85%"></div>
-      <span class="lab" style="left:15%" id="cvLa"></span><span class="lab" style="left:85%" id="cvLb"></span><div class="ball" id="cvBall"></div>`;
+      <span class="lab" style="left:15%" id="cvLa"></span><span class="lab" style="left:85%" id="cvLb"></span>
+      <div class="ball ghost" id="cvGhost" hidden></div><div class="ball" id="cvBall"></div>`;
     box.dataset.ok = 1;
   }
-  document.getElementById('cvLa').textContent = lab(a);
-  document.getElementById('cvLb').textContent = lab(b);
-  const ball = document.getElementById('cvBall');
+  const ball = document.getElementById('cvBall'), ghost = document.getElementById('cvGhost');
   ball.style.left = Math.max(1, Math.min(99, 15 + 70 * e)) + '%';
-  ball.style.background = kindOf(p) === 'color' ? mixHex(a, b, e) : '';
+  ghost.hidden = !time;
+  if(time){
+    const Tt = timeTotal();
+    document.getElementById('cvLa').textContent = '0 s';
+    document.getElementById('cvLb').textContent = `${fmtSec(Tt)} s`;
+    ghost.style.left = (15 + 70 * Math.min(1, Tt > 0 ? u * timeLen() / Tt : 0)) + '%';
+    ball.style.background = '';
+  } else {
+    const a = tr.keys[CV.j - 1].v, b = k.v, p = tr.prop;
+    const lab = v => kindOf(p) === 'color' ? v : (fmtVal(p, v) + ' ' + unitOf(p)).trim();
+    document.getElementById('cvLa').textContent = lab(a);
+    document.getElementById('cvLb').textContent = lab(b);
+    ball.style.background = kindOf(p) === 'color' ? mixHex(a, b, e) : '';
+  }
   const h1 = document.getElementById('cvHead1'), h2 = document.getElementById('cvHead2');
   if(h1){ const x = cvX(u); h1.setAttribute('x1', x); h1.setAttribute('x2', x); h2.setAttribute('cx', x); h2.setAttribute('cy', cvY(e)); }
   requestAnimationFrame(cvTick);
@@ -2588,6 +2648,15 @@ function mixHex(a, b, e){
 
 function cvShowPos(x, y){
   const k = cvKey();
+  if(CV.time){
+    // sotto il mouse: quando nella riproduzione, che istante della timeline, e quanto corre lì
+    const P = timeLen(), Tt = timeTotal(), c = curvePrepare(k.curve), h = 0.004;
+    const a = Math.max(0, x - h), b = Math.min(1, x + h);
+    const sp = (curveEval(c, b) - curveEval(c, a)) / (b - a) * Tt / P;
+    document.getElementById('cvPos').innerHTML = `${esc(T('tw.play'))} <b>${fmtSec(x * P)} s</b> · `
+      + `${esc(T('tw.time'))} <b>${fmtSec(curveEval(c, x) * Tt)} s</b> · ${esc(T('tw.speed'))} <b>×${fmtX(sp)}</b>`;
+    return;
+  }
   document.getElementById('cvPos').innerHTML = `${esc(T('cv.time'))} <b>${(x * k.dur).toFixed(2)} s</b> (${Math.round(x * 100)}%) · `
     + `${esc(T('cv.progress'))} <b>${Math.round(y * 100)}%</b>`;
 }
@@ -2658,9 +2727,143 @@ function cvInit(){
   });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   VELOCITÀ DEL TEMPO
+   Una curva per tutto il modello, con l'editor delle transizioni: in
+   orizzontale la riproduzione (da 0 a P secondi), in verticale la timeline
+   (da 0 alla sua durata T). Ripida: il tempo corre (time-lapse); piatta:
+   rallenta; in discesa torna indietro. P è la durata scelta (dur), o T.
+   Arriva da Ruby con setScene (SCENE.time; null = tempo normale) e torna
+   con save_time; il motore che la usa è in lib/player.rb (warp).
+   Il tasto ⏱ c'è solo quando c'è la barra della timeline.
+═══════════════════════════════════════════════════════════════ */
+let TW = null, TW_DIRTY = false, twTimer = null;
+
+function timeData(t){
+  t = t || {};
+  return {preset: t.preset || 'linear',
+          curve: (Array.isArray(t.curve) ? t.curve : PRESETS.linear).map(q => q.slice()),
+          dur: typeof t.dur === 'number' && t.dur > 0 ? t.dur : null};
+}
+function timeTotal(){ return Math.max(+TP.total || 0, 0); }
+function timeLen(){ return TW && TW.dur ? TW.dur : timeTotal(); }
+/* ×6.0, ×0.50, ×−1.2: quante volte il tempo normale */
+function fmtX(v){
+  if(!isFinite(v)) return '—';
+  const a = Math.abs(v);
+  return (a >= 10 ? v.toFixed(0) : a >= 1 ? v.toFixed(1) : v.toFixed(2)).replace('-', '−');
+}
+
+function warpBtn(){
+  const b = document.getElementById('tpWarp');
+  if(!b) return;
+  b.hidden = !((+TP.total || 0) > 0);
+  b.className = 'tbtn warp' + (SCENE.time ? ' on' : '');
+  b.title = T('tp.warp');
+}
+
+function openTime(){
+  const Tt = timeTotal();
+  if(Tt <= 0) return;
+  if(DIRTY) saveTracks();
+  TW = timeData(SCENE.time);
+  TW_DIRTY = false;
+  CV = {time:true, T:Tt, drag:null, hover:null, t0:performance.now()};
+  cvRange();
+  document.getElementById('cvTitle').textContent = T('tw.title');
+  document.getElementById('cvHead').textContent = T('tw.head');
+  document.getElementById('cvX').title = T('help.close');
+  document.getElementById('cvMirror').textContent = '⇄ ' + T('cv.mirror');
+  document.getElementById('cvAll').hidden = true;
+  const nb = document.getElementById('cvNormal');
+  nb.hidden = false;
+  nb.textContent = '↺ ' + T('tw.normal');
+  document.getElementById('cvDone').textContent = T('cv.done');
+  document.getElementById('cvTips').innerHTML = esc(T('cv.tips')).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
+  document.getElementById('cvPos').textContent = '';
+  const box = document.getElementById('cvDur');
+  box.hidden = false;
+  box.innerHTML = `<span class="f"><label for="twDur">${esc(T('tw.dur'))}</label>
+      <input class="vbox sm" id="twDur" type="text" inputmode="decimal" autocomplete="off"
+             onchange="timeDur(this)" onblur="timeDur(this)"><span class="vu">s</span></span>
+    <span class="f" id="twTot"></span><span class="f" id="twAvg"></span>
+    <button class="ibtn ghost" id="twSame" onclick="timeSame()">↺ ${esc(T('tw.same'))}</button>`;
+  renderTimeDur();
+  renderCurve();
+  renderPresets();
+  document.getElementById('curvem').classList.add('open');
+  requestAnimationFrame(cvTick);
+}
+
+/* La riga della durata: valori soli (la casella in cui si scrive non si tocca) */
+function renderTimeDur(){
+  if(!CV || !CV.time) return;
+  const P = timeLen(), Tt = timeTotal(), inp = document.getElementById('twDur');
+  if(!inp) return;
+  if(inp !== document.activeElement) inp.value = fmtSec(P);
+  document.getElementById('twTot').textContent = T('tw.total').replace('{s}', fmtSec(Tt));
+  document.getElementById('twAvg').innerHTML = `${esc(T('tw.avg'))} <b>×${fmtX(Tt / P)}</b>`;
+  document.getElementById('twSame').hidden = !TW.dur;
+}
+
+/* La timeline è cambiata sotto l'editor (tracce modificate, Ctrl+Z): assi e
+   medie si rifanno; senza più oggetti sulla timeline l'editor si chiude. */
+function timeTotalChanged(){
+  const Tt = timeTotal();
+  if(Tt <= 0){ closeCurve(); return; }
+  if(Math.abs(Tt - CV.T) < 1e-9) return;
+  CV.T = Tt;
+  renderTimeDur();
+  renderCurve();
+}
+
+function timeDur(el){
+  if(!CV || !CV.time) return;
+  let v = curNum(el);
+  const P = timeLen();
+  if(v === null){ el.value = fmtSec(P); return; }
+  v = Math.max(0.1, Math.min(3600, v));
+  el.value = fmtSec(v);
+  if(Math.abs(v - P) < 1e-9) return;
+  TW.dur = v;
+  timeChanged();
+  renderTimeDur();
+  renderCurve();
+}
+/* La riproduzione torna lunga quanto la timeline (e la segue se cambia) */
+function timeSame(){
+  if(!CV || !CV.time || !TW.dur) return;
+  TW.dur = null;
+  timeChanged();
+  renderTimeDur();
+  renderCurve();
+}
+/* Tempo normale: curva lineare e durata della timeline (il modello non ha più la chiave) */
+function timeNormal(){
+  if(!CV || !CV.time) return;
+  TW = timeData(null);
+  cvRange();
+  timeChanged();
+  renderTimeDur();
+  renderCurve();
+  renderPresets();
+}
+
+function timeChanged(){
+  TW_DIRTY = true;
+  clearTimeout(twTimer);
+  twTimer = setTimeout(saveTime, 350);
+}
+function saveTime(){
+  clearTimeout(twTimer);
+  if(!TW_DIRTY || !TW){ TW_DIRTY = false; return; }
+  TW_DIRTY = false;
+  sketchup.save_time(JSON.stringify({preset: TW.preset, curve: TW.curve, dur: TW.dur}));
+}
+
 /* ═══ Guida ═══
    Testi help.* in lang/*.json; le parole tra [quadre] diventano <kbd>. */
-const HELP_ITEMS = 8;
+const HELP_ITEMS = 9;
 function helpText(k){ return esc(T(k)).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>'); }
 function helpHTML(){
   let li = '';

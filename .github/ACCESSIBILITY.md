@@ -39,6 +39,9 @@ If an animation made by someone else bothers you:
 - **Speed and smoothness**: *Playback › Speed*, and gentle curves (*Speed up
   and slow down* is the default for new tracks; *Bounce* and *Elastic*
   shake the most).
+- **Speed of time** (**⏱** next to the timeline) can turn the whole model
+  into a fast time-lapse; *Normal time* in its window puts everything back
+  to real speed.
 - **Paths in the view**: *Settings › Editing › Show paths* draws the route of
   moving objects. Turn it off if the extra lines get in the way.
 - **Panel animations**: *System › Appearance › Animations* (Advanced).
@@ -53,7 +56,11 @@ If an animation made by someone else bothers you:
 - **The curve editor needs a pointer** to drag its dots. Every transition
   can use a ready-made curve from its list instead (linear, speed up, slow
   down, overshoot, bounce, elastic, steps), and values are typed in boxes.
-- **The *Use* tool** needs a click on the object in the model. The same
+  The speed of time uses the same editor: ready-made curves are buttons, and
+  how long the playback lasts is typed in a box.
+- **The *Use* tool** needs a click on the object in the model. Before you
+  click, the object that will start gets a coloured box, its name next to
+  the pointer and a Play-triangle cursor. The same
   objects can start with the timeline or after another object instead
   (*Starts* in the object's settings); in DagaWASD the Use key works too,
   and DagaWASD's keys can all be changed.
@@ -92,4 +99,4 @@ treated as bugs. Open an [issue](https://github.com/Dagadam/dagadyn/issues/new/c
 and describe what you use (screen reader, magnifier, switch, keyboard
 only…) and what happened. You can write in English or Italian.
 
-This statement was last reviewed for DagaDyn 0.2.0 (November 2026).
+This statement was last reviewed for DagaDyn 0.3.0 (November 2026).

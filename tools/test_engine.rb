@@ -127,7 +127,7 @@ def item(pair)
   e, d = pair
   { data: d, tracks: D.prepare_tracks(d), len: D.data_length(d), loops: D.data_loops?(d), trig: nil }
 end
-S = { items: {}, by_pid: {}, total: 0.0, t0: 0.0, ext_t0: 0.0 }
+S = { items: {}, by_pid: {}, total: 0.0, c0: 0.0, ext_c0: 0.0 }
 [a, b, tr_, ch].each { |pr| it = item(pr); S[:items][pr[0]] = it; S[:by_pid][pr[0].persistent_id] = it }
 S[:total] = 4.5
 S[:items].each { |e, it| it[:static] = D.chain_starts([a, b, tr_, ch])[e.persistent_id] }
@@ -190,7 +190,7 @@ eq('…finché la timeline non riparte', D.item_local(SB, i25, 58.0), 2.0)
 lev = obj(4001, 'trigger', act: 'toggle', dur: 0.5)
 brg = obj(4002, 'after', after: 4001, wait: 0.5, dur: 4.0)
 gat = obj(4003, 'after', after: 4002, dur: 1.0)            # un terzo in catena dietro il ponte
-SP = { items: {}, by_pid: {}, t0: 0.0, ext_t0: 0.0 }
+SP = { items: {}, by_pid: {}, c0: 0.0, ext_c0: 0.0 }
 [lev, brg, gat].each { |pr| it = item(pr); it[:static] = nil; SP[:items][pr[0]] = it; SP[:by_pid][pr[0].persistent_id] = it }
 il = SP[:by_pid][4001]; ib2 = SP[:by_pid][4002]; ig = SP[:by_pid][4003]
 eq('ponte fermo prima della leva', D.item_local(SP, ib2, 3.0) <= 0 ? 1 : 0, 1)

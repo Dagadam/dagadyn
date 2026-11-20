@@ -150,6 +150,8 @@ module DagaDyn
     # Chiave degli attributi del modello con i piani di sezione animati
     # (trovarli scorrendo tutte le entità costerebbe troppo nei modelli grandi)
     SECTIONS_KEY = 'sections'.freeze
+    # Chiave degli attributi del modello con la velocità del tempo (lib/tracks.rb)
+    TIME_KEY = 'time'.freeze
 
     # ══════════════════════════════════════════════════════════════
     # Stato

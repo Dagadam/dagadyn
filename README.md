@@ -10,6 +10,8 @@ through a building.
 
 ⬇ **Download**: [latest release](https://github.com/Dagadam/dagadyn/releases/latest) (all versions: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Example**: [a bedroom where everything moves](examples/README.md) (`examples/bedroom.skp`), with every feature of DagaDyn.
+
 ## What it does
 
 - **Properties**: move (from where the object is), position, rotation, size
@@ -21,6 +23,10 @@ through a building.
   one you draw in the curve editor by dragging its dots.
 - **Timeline**: Play, Pause, Stop and a bar to look at any moment. Once,
   in a loop or back and forth, at the speed you like.
+- **Speed of time**: with the **⏱** button next to the timeline, a curve
+  like the transitions decides how time flows for the whole model: steeper
+  for a time-lapse, flatter for slow motion, and the playback can last less
+  or more than the timeline.
 - **Starts**: an object starts with the timeline, after another object has
   finished (plus a wait), or **when it is used**: click it with the *Use*
   tool. It can start over every time, or go forward and then back the next

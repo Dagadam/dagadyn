@@ -10,6 +10,8 @@ lampen die aangaan, sneden die door een gebouw schuiven.
 
 ⬇ **Downloaden**: [nieuwste versie](https://github.com/Dagadam/dagadyn/releases/latest) (alle versies: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Voorbeeld**: [een slaapkamer waarin alles beweegt](examples/README.md) (`examples/bedroom.skp`), met alle functies van DagaDyn.
+
 ## Wat het doet
 
 - **Eigenschappen**: verplaatsen (vanaf waar het object staat), positie,
@@ -22,6 +24,10 @@ lampen die aangaan, sneden die door een gebouw schuiven.
   punten te slepen.
 - **Tijdlijn**: Afspelen, Pauze, Stop en een balk om elk moment te bekijken.
   Eén keer, in een lus of heen en terug, op de snelheid die je wilt.
+- **Snelheid van de tijd**: met de knop **⏱** naast de tijdlijn bepaalt een
+  curve zoals bij de overgangen hoe de tijd in het hele model verloopt:
+  steiler voor een timelapse, vlakker voor slow motion, en het afspelen kan
+  korter of langer duren dan de tijdlijn.
 - **Starten**: een object start met de tijdlijn, nadat een ander klaar is
   (plus een wachttijd), of **bij bedienen**: een klik met het gereedschap
   *Bedienen*. Het kan elke keer opnieuw beginnen, of vooruit gaan en de

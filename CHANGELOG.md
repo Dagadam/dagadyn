@@ -6,6 +6,17 @@
 - **In catena dietro un oggetto azionato «avanti/indietro» si segue la sua direzione** (leva → ponte levatoio,
   pulsante → cancello): in tutte e due le direzioni si parte quando l'azionato ha finito (più l'attesa), e si
   riprende da dove si era arrivati. Prima al ritorno l'oggetto in catena scattava di colpo allo stato iniziale.
+- **Velocità del tempo** (⏱ accanto alla timeline, che c'è solo quando ci sono oggetti sulla timeline): con la
+  stessa curva a pallini delle transizioni decidi come scorre il tempo di tutto il modello. Più ripida è un
+  time-lapse, più piatta un rallentatore, in discesa il tempo torna indietro; e la riproduzione può durare meno o
+  più della timeline (60 s di timeline in 10 s: sei volte più veloce). Vale per il Play, la barra, gli oggetti
+  azionati e, con DagaWASD, anche camminando e nei video. Sta nel modello e si annulla con Ctrl+Z; «Tempo
+  normale» la toglie. Con «Ripeti», o con oggetti in ciclo, ricomincia a ogni giro della timeline.
+
+### Esempio
+- **examples/bedroom.skp**: una cameretta in cui si muove tutto, con tutte le funzioni di DagaDyn (giorno e
+  notte fuori dalla finestra, porta, armadio, cassetti, lampada, tende, scatola a sorpresa, piano di sezione, giochi).
+  Si apre in SketchUp 2023 o successivo; examples/README.md spiega cosa cliccare e cosa mostra ogni oggetto.
 
 ### Pannello
 - In alto non c'è più il secondo tasto Play (faceva lo stesso del Play della timeline): restano guida, registro
@@ -27,6 +38,9 @@
   lasciava a terra l'ombra lunga e faceva ombra sugli oggetti vicini).
 - **Oggetti e cielo non vengono più tagliati** quando un oggetto animato esce dalla posizione di riposo (più alto,
   spostato): con DagaWASD le nuvole sparivano a ogni ciclo.
+- **Un oggetto animato dentro un altro gruppo non sparisce più**: lontano dalla posizione di riposo, a tratti
+  SketchUp non lo disegnava e ne restava solo l'ombra (lo decideva dall'ingombro di riposo del gruppo che lo
+  contiene, che non si aggiornava).
 - **Catene lunghe**: in una sequenza «dopo un altro oggetto» dal 18° oggetto in poi non partiva più niente; ora
   nessun limite, e l'ordine degli oggetti nel modello non conta.
 - **Strumento Aziona**: la barra di stato mostra il nome dell'oggetto azionato invece di «{name}».
@@ -49,11 +63,17 @@
   non seguiva la selezione, salvataggio senza ritorno a riposo, e «invalid overlay» nel registro cambiando
   un'impostazione. Ora a ogni documento nuovo o aperto si riaggancia tutto.
 - Un materiale eliminato durante l'animazione (Elimina inutilizzati) non impedisce più il ripristino allo Stop.
+- **Componenti non più usati**: un oggetto animato dentro un componente tolto dal modello (resta fra i componenti
+  «Nel modello») compariva ancora nella Scena e allungava la timeline. Ora conta solo ciò che è nel modello.
+- **Editor delle curve**: «Usa per tutte le transizioni» compariva anche quando la traccia ne ha una sola.
+- Con «Segui la selezione» spento, dopo un Ctrl+Z la Scena del pannello restava quella di prima.
 
 ### Con DagaWASD
 - **Lingua e aspetto del pannello sono quelli di DagaWASD**: in Sistema non compaiono Lingua e Aspetto, e se li
   cambi in DagaWASD il pannello di DagaDyn li segue subito. Il logo resta quello di DagaDyn; da sola DagaDyn usa
   di nuovo i suoi.
+- **La barra della timeline mostrava un tempo senza senso** mentre si camminava, si esplorava o si registrava un
+  video con DagaWASD (spesso un numero enorme, con il cursore in fondo): ora mostra l'istante che si vede.
 
 ## [0.2.0] — 2026-11-11
 

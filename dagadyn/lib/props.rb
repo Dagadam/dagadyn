@@ -153,6 +153,27 @@ module DagaDyn
     # le animazioni. Lo stato di riposo si ripristina allo stesso modo.
     def self.place(e, tr)
       e.respond_to?(:move!) ? e.move!(tr) : e.transformation = tr
+      holders_stale(e)
+    end
+
+    # move! non aggiorna l'ingombro del gruppo che contiene l'oggetto: resta
+    # quello della posa di riposo, e SketchUp lo usa per decidere se
+    # disegnare il gruppo. Un oggetto animato dentro un altro, lontano dal
+    # suo riposo, spariva quando quel vecchio ingombro usciva dalla vista
+    # (restava solo l'ombra, che SketchUp calcola a parte). Si fa ricalcolare
+    # l'ingombro al contenitore e a tutti quelli sopra di lui: costa poco
+    # (segna solo che va rifatto) e non tocca il modello né l'annulla.
+    def self.holders_stale(e)
+      d = e.parent
+      return unless d.is_a?(Sketchup::ComponentDefinition) && d.respond_to?(:invalidate_bounds)
+      seen = {}
+      todo = [d]
+      while (d = todo.pop)
+        next if seen[d]
+        seen[d] = true
+        d.invalidate_bounds
+        d.instances.each { |i| p = i.parent; todo << p if p.is_a?(Sketchup::ComponentDefinition) }
+      end
     end
 
     def self.layer_by_name(model, name)

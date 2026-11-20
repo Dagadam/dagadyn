@@ -27,10 +27,12 @@ module DagaDyn
     # - al salvataggio il modello torna a riposo e subito dopo riprende
     #   (lib/observers.rb): nel file finisce sempre lo stato di progetto.
     #
-    # Tempo: t della timeline = t0 + (adesso − partenza) × velocità. Un PC
-    # lento salta fotogrammi, ma un secondo dura un secondo. Ogni oggetto ha
-    # il suo tempo locale (item_local): parte con la timeline, dopo un altro
-    # oggetto, o quando lo si aziona.
+    # Tempo: l'orologio della riproduzione c = c0 + (adesso − partenza) ×
+    # velocità; il tempo della timeline t = c, oppure, con la velocità del
+    # tempo del modello, t = warp(c) (qui sotto). Un PC lento salta
+    # fotogrammi, ma un secondo dura un secondo. Ogni oggetto ha il suo tempo
+    # locale (item_local): parte con la timeline, dopo un altro oggetto, o
+    # quando lo si aziona.
     #
     # Chi batte il tempo: view.animation (Anim, qui sotto), un timer di
     # riserva, oppure DagaWASD (camminata, esploratore, percorsi e video)
@@ -61,9 +63,9 @@ module DagaDyn
       session_end if @session
       return nil unless model
       @ended = nil                     # l'annulla dopo lo Stop vale per l'ultima sessione
-      @session = { model: model, items: {}, by_pid: {}, state: :paused, t: 0.0, t0: 0.0, wall0: 0.0,
-                   first_op: true, panel_at: 0.0, tick: 0, ext: nil, ext_t0: 0.0, hold: false,
-                   shadows: false, total: 0.0, loops: false }
+      @session = { model: model, items: {}, by_pid: {}, state: :paused, t: 0.0, c: 0.0, c0: 0.0, wall0: 0.0,
+                   first_op: true, panel_at: 0.0, tick: 0, ext: nil, ext_c0: 0.0, hold: false,
+                   shadows: false, total: 0.0, loops: false, warp: nil }
       animated_instances(model).each { |e, data| item_add(e, data) }
       recalc_total
       @session
@@ -361,6 +363,125 @@ module DagaDyn
       s[:total] = timeline_length(list, starts)
       s[:loops] = loops?(list, starts)
       s[:items].each { |e, it| it[:static] = starts[e.persistent_id] }
+      warp_setup(s)
+    end
+
+    # ── Velocità del tempo ──────────────────────────────────────────
+    # La curva del modello (read_time, lib/tracks.rb) lega l'orologio della
+    # riproduzione c al tempo della timeline t, come una curva di
+    # transizione: in x la riproduzione, da 0 a P secondi; in y la timeline,
+    # da 0 a T (la sua durata). Dove sale ripida il tempo corre (time-lapse),
+    # dove è piatta rallenta, dove scende torna indietro.
+    #
+    #   t = T × curva(c / P)        P: la durata scelta nel pannello, o T
+    #
+    # Dopo la fine (c > P) la curva ricomincia se ricomincia la timeline
+    # (oggetti in ciclo, o «Ripeti»): a ogni giro lo stesso andamento.
+    # Altrimenti il tempo torna normale: lì si muovono solo gli azionati e
+    # chi li segue. Vale per tutto: Play, barra, azionati, DagaWASD (che
+    # batte c: il video al tempo del video, la curva dentro).
+    # Senza curva, o con la timeline vuota, t = c.
+    def self.warp_setup(s)
+      tm = read_time(s[:model])
+      tt = s[:total]
+      w = nil
+      if tm && tt > 0
+        w = { p: tm['dur'] || tt, t: tt, pts: tm['curve'], curve: curve_prepare(tm['curve']),
+              round: s[:loops] || cf('play_repeat') ? true : false }
+      end
+      old = s[:warp]
+      return if old.nil? && w.nil?
+      return if old && w && old[:p] == w[:p] && old[:t] == w[:t] && old[:pts] == w[:pts] && old[:round] == w[:round]
+      # dove sono adesso riproduzione e timeline, con la curva di prima
+      now = Time.now.to_f
+      live = s[:state] == :playing && !s[:ext]
+      c = live ? clock(s, now) : s[:c]
+      t = live ? warp(s, c) : s[:t]
+      s[:warp] = w
+      warp_keep(s, old, c, t, now)
+    end
+
+    # Durata della riproduzione della timeline (P)
+    def self.play_len(s)
+      s[:warp] ? s[:warp][:p] : s[:total]
+    end
+
+    def self.warp(s, c)
+      w = s[:warp] or return c
+      p = w[:p]
+      tt = w[:t]
+      return c * tt / p if c <= 0.0
+      n = (c / p).floor
+      return tt + (c - p) if n >= 1 && !w[:round]
+      n * tt + tt * curve_eval(w[:curve], c / p - n)
+    end
+
+    # L'istante della riproduzione che dà il tempo t della timeline. Una
+    # curva che torna indietro ci passa più volte: si prende la volta più
+    # vicina a near (secondi della riproduzione), o la prima.
+    def self.unwarp(s, t, near = nil)
+      w = s[:warp] or return t
+      p = w[:p]
+      tt = w[:t]
+      return t * p / tt if t <= 0.0
+      return p + (t - tt) if t >= tt && !w[:round]
+      n = w[:round] ? (t / tt).floor : 0
+      u = curve_inverse(w[:curve], t / tt - n, near && near / p - n)
+      (n + u) * p
+    end
+
+    # Dove la curva vale y: la curva va da 0 a 1, quindi per y fra 0 e 1
+    # c'è sempre almeno un punto. Si cerca a passi, poi per bisezione.
+    INV_STEPS = 256
+    def self.curve_inverse(c, y, near = nil)
+      return 0.0 if y <= 0.0
+      return 1.0 if y >= 1.0
+      best = nil
+      u0 = 0.0
+      f0 = 0.0
+      (1..INV_STEPS).each do |i|
+        u1 = i.to_f / INV_STEPS
+        f1 = curve_eval(c, u1)
+        if (f0 - y) * (f1 - y) <= 0.0
+          x = f0 == y ? u0 : inverse_in(c, y, u0, f0, u1)
+          return x unless near
+          best = x if best.nil? || (x - near).abs < (best - near).abs
+        end
+        u0 = u1
+        f0 = f1
+      end
+      best || 1.0
+    end
+
+    def self.inverse_in(c, y, lo, flo, hi)
+      40.times do
+        mid = (lo + hi) / 2
+        fm = curve_eval(c, mid)
+        if (flo - y) * (fm - y) <= 0.0
+          hi = mid
+        else
+          lo = mid
+          flo = fm
+        end
+      end
+      (lo + hi) / 2
+    end
+
+    # La curva (o la durata della timeline, o la ripetizione) è cambiata:
+    # la timeline resta all'istante in cui era, cambia solo da lì in avanti.
+    # L'orologio della riproduzione riparte dal punto della curva nuova che
+    # dà quell'istante, il più vicino a dove era su quella di prima.
+    def self.warp_keep(s, old, c, t, now)
+      w = s[:warp]
+      near = w ? c * w[:p] / (old ? old[:p] : w[:t]) : nil   # senza curva prima: c era t
+      c = unwarp(s, t, near)
+      s[:c] = c
+      if s[:ext]
+        s[:ext_c0] = c - s[:ext_el].to_f * cf('play_speed')
+      elsif s[:state] == :playing
+        s[:c0] = c
+        s[:wall0] = now
+      end
     end
 
     # ── Tracce pronte per il calcolo ────────────────────────────────
@@ -578,11 +699,12 @@ module DagaDyn
       s[:items].each_value { |it| it.delete(:pin) }
     end
 
-    # La timeline torna indietro di delta (ripetizione): azionati e catene
-    # restano dove sono.
-    def self.shift_time(s, delta)
-      s[:t0]     -= delta
-      s[:ext_t0] -= delta
+    # La timeline torna indietro di delta (ripetizione), l'orologio della
+    # riproduzione di dc (con la velocità del tempo, giri interi: n × P per
+    # n × T): azionati e catene restano dove sono.
+    def self.shift_time(s, delta, dc = delta)
+      s[:c0]     -= dc
+      s[:ext_c0] -= dc
       s[:items].each_value do |it|
         it[:trig][:at] -= delta if it[:trig]
         next unless it[:follow]
@@ -736,13 +858,14 @@ module DagaDyn
         session_end
         return
       end
-      if !s[:loops] && s[:total] > 0 && s[:t] >= s[:total] - 1e-6 && !busy_at?(s, s[:t])
-        shift_time(s, s[:t])
+      if !s[:loops] && s[:total] > 0 && s[:c] >= play_len(s) - 1e-6 && !busy_at?(s, s[:t])
+        shift_time(s, s[:t], s[:c])
         s[:t] = 0.0
+        s[:c] = 0.0
       end
       clear_pins(s)
       s[:state] = :playing
-      s[:t0]    = s[:t]
+      s[:c0]    = s[:c]
       s[:wall0] = Time.now.to_f
       shadows_off(s)
       driver_start(s[:model])
@@ -752,7 +875,10 @@ module DagaDyn
     def self.cmd_pause
       s = @session or return
       return if s[:ext]
-      s[:t] = clock(s, Time.now.to_f) if s[:state] == :playing
+      if s[:state] == :playing
+        s[:c] = clock(s, Time.now.to_f)
+        s[:t] = warp(s, s[:c])
+      end
       s[:state] = :paused
       driver_stop
       apply(s[:t])
@@ -771,6 +897,8 @@ module DagaDyn
     end
 
     # Timeline spostata a mano (scrub): durante la riproduzione si riparte da lì.
+    # La barra è il tempo della timeline: con la velocità del tempo
+    # l'orologio della riproduzione va al punto della curva che lo dà.
     def self.cmd_seek(t)
       if refuse_busy
         panel_transport
@@ -783,9 +911,10 @@ module DagaDyn
       end
       t = t.to_f.clamp(0.0, [s[:total], 0.0].max)
       clear_pins(s)
+      s[:c] = unwarp(s, t, s[:c])
       s[:t] = t
       if s[:state] == :playing
-        s[:t0] = t
+        s[:c0] = s[:c]
         s[:wall0] = Time.now.to_f
       end
       apply(t)
@@ -807,6 +936,7 @@ module DagaDyn
         it[:trig] = { act: 'toggle', at: s[:t], from: local, dir: 0 }
       elsif st
         s[:t] = [st + local, 0.0].max
+        s[:c] = unwarp(s, s[:t], s[:c])
       else
         # in catena dietro un azionato non ancora partito (o in un giro
         # chiuso): non ha un istante sulla timeline, resta fermo lì
@@ -824,37 +954,41 @@ module DagaDyn
       session_end(true)
     end
 
+    # L'orologio della riproduzione (c): il tempo della timeline è warp(s, c)
     def self.clock(s, now)
-      s[:t0] + (now - s[:wall0]) * cf('play_speed')
+      s[:c0] + (now - s[:wall0]) * cf('play_speed')
     end
 
     # Velocità cambiata (pannello, importazione): il tempo fin qui resta
     # quello corso alla velocità di prima, cambia solo da adesso in poi.
-    # Senza, t = t0 + trascorso × velocità salterebbe avanti o indietro.
+    # Senza, c = c0 + trascorso × velocità salterebbe avanti o indietro.
     def self.speed_kept(old)
       s = @session or return
       now_speed = cf('play_speed')
       return if old.nil? || now_speed == old
       if s[:ext]
-        s[:ext_t0] += s[:ext_el].to_f * (old - now_speed)
+        s[:ext_c0] += s[:ext_el].to_f * (old - now_speed)
       elsif s[:state] == :playing
         now = Time.now.to_f
-        s[:t0] += (now - s[:wall0]) * old
+        s[:c0] += (now - s[:wall0]) * old
         s[:wall0] = now
       end
     end
 
     # Fine della timeline: ricomincia (ripetizione) o si ferma. Con un
     # azionato in moto o con lo strumento Aziona (hold) si va avanti.
-    # Ritorna il tempo da applicare, o nil per fermarsi.
-    def self.timeline_end(s, t)
-      return t if s[:loops] || t < s[:total] || busy_at?(s, t)
-      if cf('play_repeat') && s[:total] > 0
-        n = (t / s[:total]).floor
-        shift_time(s, n * s[:total])
-        return t - n * s[:total]
+    # Si decide sull'orologio della riproduzione c: con la velocità del
+    # tempo la timeline può superare la sua fine prima (una curva che va
+    # oltre la meta e torna). Ritorna il c da applicare, o nil per fermarsi.
+    def self.timeline_end(s, c)
+      len = play_len(s)
+      return c if s[:loops] || c < len || busy_at?(s, warp(s, c))
+      if cf('play_repeat') && len > 0
+        n = (c / len).floor
+        shift_time(s, n * s[:total], n * len)
+        return c - n * len
       end
-      return t if s[:hold] || s[:ext]
+      return c if s[:hold] || s[:ext]
       nil
     end
 
@@ -862,19 +996,21 @@ module DagaDyn
     def self.advance(now = Time.now.to_f)
       s = @session
       return false unless s && s[:state] == :playing && s[:model].valid?
-      t_now = clock(s, now)
-      t = timeline_end(s, t_now)
-      unless t
+      c_now = clock(s, now)
+      c = timeline_end(s, c_now)
+      unless c
         # Fermi all'istante raggiunto, non alla fine della timeline: un
         # azionato (e chi gli va dietro) può essere finito dopo, e tornare
         # a s[:total] lo faceva scattare indietro (il ponte a metà corsa).
-        apply([t_now, s[:total]].max)
+        s[:c] = c_now
+        apply([warp(s, c_now), s[:total]].max)
         s[:state] = :paused
         shadows_back(s)
         panel_transport
         return false
       end
-      apply(t)
+      s[:c] = c
+      apply(warp(s, c))
       panel_tick(s, now)
       true
     rescue => dyn_err

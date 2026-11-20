@@ -10,6 +10,8 @@ encienden, secciones que recorren un edificio.
 
 ⬇ **Descargar**: [última versión](https://github.com/Dagadam/dagadyn/releases/latest) (todas las versiones: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Ejemplo**: [un dormitorio donde todo se mueve](examples/README.md) (`examples/bedroom.skp`), con todas las funciones de DagaDyn.
+
 ## Qué hace
 
 - **Propiedades**: desplazamiento (desde donde está el objeto), posición,
@@ -23,6 +25,10 @@ encienden, secciones que recorren un edificio.
 - **Línea de tiempo**: Reproducir, Pausa, Stop y una barra para ver
   cualquier instante. Una vez, en bucle o de ida y vuelta, a la velocidad que
   quieras.
+- **Velocidad del tiempo**: con el botón **⏱** junto a la línea de tiempo,
+  una curva como las de las transiciones decide cómo pasa el tiempo en todo
+  el modelo: más empinada para una cámara rápida, más plana para una cámara
+  lenta, y la reproducción puede durar menos o más que la línea de tiempo.
 - **Inicios**: un objeto empieza con la línea de tiempo, después de que otro
   termine (más una espera), o **al accionarlo**: un clic con la herramienta
   *Accionar*. Puede empezar cada vez desde el principio, o avanzar y la vez

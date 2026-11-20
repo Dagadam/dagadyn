@@ -128,6 +128,56 @@ module DagaDyn
       log_error(__method__, dyn_err)
     end
 
+    # ══════════════════════════════════════════════════════════════
+    # Velocità del tempo: una curva per tutto il modello, negli attributi
+    # del modello (dizionario DICT, chiave TIME_KEY), come JSON:
+    #
+    #   { "v": 1,
+    #     "preset": "ease_in",                curva scelta (o "custom")
+    #     "curve": [[0,0],…,[1,1]],           in x la riproduzione, in y la timeline (0–1)
+    #     "dur": 10.0 }                       quanto dura la riproduzione della timeline (s);
+    #                                         senza: quanto la timeline
+    #
+    # Come la usa il motore: lib/player.rb (warp). Lineare e senza durata è
+    # il tempo normale: la chiave resta vuota.
+    # ══════════════════════════════════════════════════════════════
+    TIME_DUR_MIN = 0.1
+
+    def self.read_time(model)
+      raw = model.get_attribute(DICT, TIME_KEY, '')
+      return nil unless raw.is_a?(String) && !raw.empty?
+      d = sanitize_time(JSON.parse(raw))
+      time_plain?(d) ? nil : d
+    rescue JSON::ParserError
+      nil
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      nil
+    end
+
+    # Va chiamata dentro un'operazione. Ritorna i dati scritti (nil: tempo normale).
+    def self.write_time(model, d)
+      d = sanitize_time(d)
+      plain = time_plain?(d)
+      model.set_attribute(DICT, TIME_KEY, plain ? '' : JSON.generate(d))
+      plain ? nil : d
+    end
+
+    def self.sanitize_time(d)
+      d = {} unless d.is_a?(Hash)
+      preset = d['preset'].to_s
+      preset = 'linear' unless PRESET_POINTS.key?(preset) || preset == 'custom'
+      out = { 'v' => DATA_VER, 'preset' => preset,
+              'curve' => sanitize_points(d['curve'].is_a?(Array) ? d['curve'] : preset_points(preset)) }
+      dur = d['dur']
+      out['dur'] = dur.to_f.clamp(TIME_DUR_MIN, MAX_DUR) if dur.is_a?(Numeric) && dur.to_f.finite? && dur.to_f > 0
+      out
+    end
+
+    def self.time_plain?(d)
+      d['dur'].nil? && d['curve'] == [[0.0, 0.0], [1.0, 1.0]]
+    end
+
     def self.empty_data
       { 'v' => DATA_VER, 'pivot' => cf('new_pivot'), 'axes' => 'object', 'faces' => false,
         'start' => default_start, 'tracks' => [] }
@@ -241,10 +291,20 @@ module DagaDyn
       list = []
       model.definitions.each do |d|
         next if d.image?
-        d.instances.each { |e| list << e if e.attribute_dictionary(DICT) }
+        d.instances.each { |e| list << e if e.attribute_dictionary(DICT) && in_model?(e) }
       end
       @anim_cache = [model, list]
       list
+    end
+
+    # Un'istanza dentro un componente che nel modello non è più usato (tutte
+    # le copie eliminate: resta fra i componenti «Nel modello») non si vede e
+    # non si anima. Senza questo controllo compariva nella Scena e la sua
+    # durata allungava la timeline. Rimesso nel modello il componente,
+    # l'oggetto torna animato (è un'operazione: l'elenco si rifà).
+    def self.in_model?(e)
+      p = e.parent
+      !p.is_a?(Sketchup::ComponentDefinition) || p.count_used_instances > 0
     end
 
     def self.animated_instances(model)

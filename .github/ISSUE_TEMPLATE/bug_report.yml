@@ -30,7 +30,7 @@ body:
     attributes:
       label: DagaDyn version
       description: Extensions › Extension Manager shows it next to DagaDyn.
-      placeholder: "0.2.0"
+      placeholder: "0.3.0"
     validations:
       required: true
   - type: dropdown

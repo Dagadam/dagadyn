@@ -39,11 +39,19 @@ module DagaDyn
     rescue => dyn_err; log_error(__method__, dyn_err); nil; end
 
     # ── Timeline ────────────────────────────────────────────────────
+    # La barra mostra il tempo della timeline. Mentre DagaWASD batte il tempo
+    # (ext) vale l'ultimo istante applicato: l'orologio del Play è fermo, e
+    # leggerlo dava un numero senza senso (la timeline sempre in fondo).
     def self.transport_state
       s = @session
       return { 'state' => 'stop', 't' => 0.0, 'total' => scene_total, 'loops' => false } unless s
-      t = s[:state] == :playing ? clock(s, Time.now.to_f) : s[:t]
-      t = t % s[:total] if s[:state] == :playing && cf('play_repeat') && s[:total] > 0 && !s[:loops]
+      t = s[:t]
+      if s[:state] == :playing && !s[:ext]
+        c = clock(s, Time.now.to_f)
+        len = play_len(s)
+        c %= len if cf('play_repeat') && len > 0 && !s[:loops]
+        t = warp(s, c)
+      end
       { 'state' => s[:state] == :playing ? 'play' : 'pause', 't' => t, 'total' => s[:total], 'loops' => s[:loops] }
     end
 
@@ -91,9 +99,11 @@ module DagaDyn
         'overlay' => overlay_ok? }
     end
 
+    # Gli oggetti animati, la durata della timeline e la velocità del tempo
+    # (nil: tempo normale)
     def self.scene_info(list = nil)
       model = Sketchup.active_model
-      return { 'objects' => [] } unless model
+      return { 'objects' => [], 'total' => 0.0, 'time' => nil } unless model
       list ||= animated_instances(model)
       starts = chain_starts(list)
       { 'objects' => list.map do |e, data|
@@ -103,7 +113,7 @@ module DagaDyn
             'len' => data_length(data), 'loops' => data_loops?(data),
             'mode' => data['start']['mode'], 'at' => starts[e.persistent_id] }
         end,
-        'total' => timeline_length(list, starts) }
+        'total' => timeline_length(list, starts), 'time' => read_time(model) }
     end
 
     def self.panel_selection
@@ -118,12 +128,19 @@ module DagaDyn
     end
 
     # Molti eventi di fila (selezione con riquadro, fotogrammi): un invio solo.
+    # Senza «segui la selezione» l'oggetto mostrato resta quello, ma la scena
+    # (oggetti animati, velocità del tempo) si aggiorna lo stesso: dopo un
+    # Ctrl+Z il tasto ⏱ restava com'era prima.
     def self.panel_selection_soon
-      return unless panel_open? && cf('follow_selection')
+      return unless panel_open?
       return if @sel_timer
       @sel_timer = UI.start_timer(0.08, false) do
         @sel_timer = nil
-        panel_selection
+        if cf('follow_selection')
+          panel_selection
+        else
+          js("setScene(#{js_json(scene_info)})")
+        end
       end
     end
 
@@ -183,6 +200,29 @@ module DagaDyn
     def self.item_base(e)
       it = @session && @session[:items][e]
       it ? it[:base] : base_of(e)
+    end
+
+    # Velocità del tempo dal pannello: una voce di annullamento, come le tracce
+    def self.save_time(json)
+      d = JSON.parse(json.to_s)
+      model = Sketchup.active_model or return
+      @own_op = true
+      model.start_operation(t('tw.title'), true)
+      begin
+        write_time(model, d)
+        model.commit_operation
+      rescue => dyn_err
+        model.abort_operation
+        raise dyn_err
+      ensure
+        @own_op = false
+      end
+      op_break                       # voce dell'utente: la sessione non vi si accoda
+      session_updated if @session && @session[:model] == model
+      js("setScene(#{js_json(scene_info)})")
+      panel_transport
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
     end
 
     # Tracce di un oggetto portate su un altro: le posizioni assolute si
@@ -293,6 +333,7 @@ module DagaDyn
       end
       sanitize_cfg
       speed_kept(speed)
+      warp_setup(@session) if @session        # «Ripeti» decide se la velocità del tempo si ripete
       save_cfg
       push_panel_state
       js("saveNow(); flashStatus(#{js_json(t('bk.imported'))})")
@@ -334,6 +375,7 @@ module DagaDyn
         @cfg.merge!(JSON.parse(json).select { |k, _| DEFAULT.key?(k) && !shared.include?(k) })
         sanitize_cfg
         speed_kept(speed)
+        warp_setup(@session) if @session      # «Ripeti» decide se la velocità del tempo si ripete
         save_cfg
         overlay_refresh
       end
@@ -357,6 +399,7 @@ module DagaDyn
       cb.call('stop')   { |_| cmd_stop }
       cb.call('bake')   { |_| cmd_bake }
       cb.call('seek')   { |v| cmd_seek(v.to_f) }
+      cb.call('save_time') { |json| save_time(json) }
       # Oggetti
       cb.call('request_selection') { |_| panel_selection }
       cb.call('save_tracks') { |json| save_tracks(json) }

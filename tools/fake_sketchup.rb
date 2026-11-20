@@ -187,6 +187,13 @@ module Sketchup
     attr_reader :instances, :entities, :bounds, :name
     def initialize(bounds, name = 'Def'); @bounds = bounds; @instances = []; @entities = Entities.new; @name = name; end
     def image?; false; end
+    # Quante volte gli si è chiesto di rifare l'ingombro
+    def invalidate_bounds; @stale = stale + 1; end
+    def stale; @stale || 0; end
+    # Come in SketchUp: le copie che stanno davvero nel modello, contenitori compresi
+    def count_used_instances
+      @instances.count { |i| i.valid? && (!i.parent.is_a?(ComponentDefinition) || i.parent.count_used_instances > 0) }
+    end
   end
 
   class Drawingelement < Entity

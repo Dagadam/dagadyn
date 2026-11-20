@@ -35,7 +35,7 @@ module DagaDyn
       s[:ext]    = owner
       s[:state]  = :playing
       s[:hold]   = true
-      s[:ext_t0] = s[:t]
+      s[:ext_c0] = s[:c]
       s[:ext_el] = 0.0
       panel_transport
       true
@@ -48,13 +48,17 @@ module DagaDyn
       s = @session
       return false unless s && s[:ext] && s[:model].valid?
       s[:ext_el] = elapsed.to_f              # per speed_kept (lib/player.rb)
-      t = s[:ext_t0] + s[:ext_el] * cf('play_speed')
-      if !s[:loops] && cf('play_repeat') && s[:total] > 0 && t >= s[:total] && !busy_at?(s, t)
-        n = (t / s[:total]).floor
-        shift_time(s, n * s[:total])
-        t -= n * s[:total]
+      # il suo orologio è quello della riproduzione: la velocità del tempo
+      # del modello (warp) vale anche camminando e nei video
+      c = s[:ext_c0] + s[:ext_el] * cf('play_speed')
+      len = play_len(s)
+      if !s[:loops] && cf('play_repeat') && len > 0 && c >= len && !busy_at?(s, warp(s, c))
+        n = (c / len).floor
+        shift_time(s, n * s[:total], n * len)
+        c -= n * len
       end
-      apply(t)
+      s[:c] = c
+      apply(warp(s, c))
       panel_tick(s, Time.now.to_f)
       true
     rescue => dyn_err
@@ -139,7 +143,7 @@ module DagaDyn
           cmd_play
           s = @session or return nil
         end
-        t = s[:ext] ? s[:t] : clock(s, Time.now.to_f)
+        t = s[:ext] ? s[:t] : warp(s, clock(s, Time.now.to_f))
         trigger_item(s, it, t)
         panel_transport
         return ent_name(e)

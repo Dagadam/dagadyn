@@ -10,6 +10,8 @@ rozsvěcují, řezy, které procházejí budovou.
 
 ⬇ **Stáhnout**: [nejnovější verze](https://github.com/Dagadam/dagadyn/releases/latest) (všechny verze: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Ukázka**: [ložnice, kde se všechno hýbe](examples/README.md) (`examples/bedroom.skp`), se všemi funkcemi DagaDyn.
+
 ## Co umí
 
 - **Vlastnosti**: posun (odkud objekt stojí), poloha, otočení, rozměry
@@ -21,6 +23,10 @@ rozsvěcují, řezy, které procházejí budovou.
   vlastní, nakreslenou v editoru křivek tažením bodů.
 - **Časová osa**: Přehrát, Pauza, Stop a lišta pro zobrazení libovolného
   okamžiku. Jednou, ve smyčce nebo tam a zpět, rychlostí, jakou chcete.
+- **Rychlost času**: tlačítko **⏱** vedle časové osy otevře křivku jako u
+  přechodů, která určuje, jak plyne čas v celém modelu: strmější pro
+  časosběr, plošší pro zpomalení, a přehrávání může trvat kratší nebo delší
+  dobu než časová osa.
 - **Spuštění**: objekt začne s časovou osou, po skončení jiného (plus
   čekání), nebo **po použití**: kliknutím nástrojem *Použít*. Může pokaždé
   začít od začátku, nebo jít dopředu a příště zpět (dveře, zásuvky).

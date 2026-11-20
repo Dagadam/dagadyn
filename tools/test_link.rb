@@ -1,5 +1,6 @@
 # Prova il motore di DagaDyn dentro una SketchUp finta (tools/fake_sketchup.rb)
-# e il suo aggancio a DagaWASD (I:\WASD\lib\dyn_link.rb, se c'è):
+# e il suo aggancio a DagaWASD (lib/dyn_link.rb dei sorgenti di DagaWASD, se
+# ci sono: la cartella WASD accanto a questa, o quella in DAGAWASD_DIR):
 # camminata, piattaforme che portano il giocatore, Aziona, catene, visibilità,
 # colori, piani di sezione, video, salvataggio, ombre, voci di annullamento.
 #
@@ -22,7 +23,7 @@ module DagaDyn
 end
 
 # DagaWASD: solo il file di collegamento, con quel poco che usa
-WASD_LINK = 'I:/WASD/lib/dyn_link.rb'
+WASD_LINK = File.join(ENV['DAGAWASD_DIR'] || File.expand_path('../../WASD', __dir__), 'lib', 'dyn_link.rb')
 module DagaWASD
   module FPSWalk
     def self.log_error(w, e); raise e.class, "#{w}: #{e.message}", e.backtrace; end
@@ -389,6 +390,12 @@ mode, pts = view.drawn.last
 xs = pts.map { |p| (p.x / 1.m).round(3) }.uniq.sort
 eq('riquadro: 12 spigoli, nel mondo (x della leva da 1 a 1.1 m)', [mode, pts.size, xs], [GL_LINES, 24, [1.0, 1.1]])
 eq('…e SketchUp lo sa (getExtents)', (tool.getExtents.max.z / 1.m).round(3), 0.5)
+# Strumento lasciato e ripreso sopra lo stesso oggetto: SketchUp ha tolto il nome, va rimesso
+tool.deactivate(view)
+view.tooltip = ''
+tool.activate
+tool.onMouseMove(0, 10, 10, view)
+eq('strumento ripreso sopra la stessa leva: il nome torna', view.tooltip, 'Leva')
 lever.erase!
 view.drawn.clear
 tool.draw(view)
@@ -422,6 +429,18 @@ eq('oggetto eliminato: esce subito dall\'elenco', D.scene_info['objects'].size, 
 anim(movers[1], [])
 eq('tracce tolte (write_data): esce dall\'elenco', D.scene_info['objects'].size, 28)
 anim(movers[1], [tr('move_z', 0, 1.m, 1.0)])
+# Un oggetto animato dentro un componente che non è più nel modello (tutte le
+# copie eliminate: resta fra i componenti «Nel modello»): non si vede, non conta
+cont = big.add_group([0, 0, 0], [3.m, 3.m, 3.m])
+movers[2].parent = cont.definition
+D::ModelObs.new.onTransactionCommit(big)
+eq('dentro un contenitore che sta nel modello: conta', D.scene_info['objects'].size, 29)
+cont.erase!
+D::ModelObs.new.onTransactionCommit(big)
+eq('contenitore eliminato dal modello: l\'oggetto dentro non conta più', D.scene_info['objects'].size, 28)
+movers[2].parent = big
+D::ModelObs.new.onTransactionCommit(big)
+eq('…rimesso nel modello: conta di nuovo', D.scene_info['objects'].size, 29)
 
 # Ctrl+Z durante il Play: durata, traiettorie e pose una volta sola, non una per oggetto
 D.cmd_play
@@ -505,6 +524,110 @@ $allow_free = false
 D::ModelObs.new.onTransactionUndo(um)
 $run_timers = false
 eq('annullando oltre l\'inizio della sessione non si tocca niente', org(mover)[0], 5.0)
+
+# ── Velocità del tempo: una curva per tutto il modello (time-lapse, rallentatore) ──
+tm = Sketchup::Model.new
+$model = tm
+D.model_changed(tm, true)
+bar = tm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+anim(bar, [tr('move_x', 0, 10.m, 10.0)])                                 # timeline di 10 s: 1 m al secondo
+eq('senza curva: tempo normale', D.read_time(tm), nil)
+eq('dati sporchi: lineare, senza durata', D.sanitize_time('preset' => 'boh', 'curve' => 'x', 'dur' => -2),
+   { 'v' => 1, 'preset' => 'linear', 'curve' => [[0.0, 0.0], [1.0, 1.0]] })
+eq('durata oltre il limite', D.sanitize_time('dur' => 1e9)['dur'], 3600.0)
+tm.ops.clear
+D.save_time(JSON.generate('preset' => 'linear', 'curve' => LIN, 'dur' => 2.0))   # 10 s in 2: ×5
+eq('dal pannello: una voce di annullamento', tm.ops, [[D.t('tw.title'), false]])
+eq('la scena la vede', D.scene_info['time'], { 'v' => 1, 'preset' => 'linear', 'curve' => [[0.0, 0.0], [1.0, 1.0]], 'dur' => 2.0 })
+D.cmd_play
+s = D.session
+w0 = s[:wall0]
+D.advance(w0 + 1.0)
+eq('time-lapse ×5: dopo 1 s la timeline è a 5 s', s[:t], 5.0)
+eq('…e l\'oggetto a 5 m', org(bar)[0], 5.0)
+eq('riproduzione finita dopo 2 s: ci si ferma', D.advance(w0 + 2.5), false)
+eq('…con tutto alla fine', org(bar)[0], 10.0)
+D.cmd_play
+eq('Play di nuovo: da capo', [s[:c], s[:t]], [0.0, 0.0])
+D.cmd_pause
+D.cmd_seek(5.0)
+eq('barra a 5 s: la riproduzione a 1 s', s[:c], 1.0)
+D.save_time(JSON.generate('preset' => 'ease_in'))                      # il tempo parte piano e accelera
+eq('curva cambiata in pausa: la timeline resta a 5 s', D.warp(s, s[:c]), 5.0)
+eq('accelera: a metà riproduzione la timeline a 1.25 s', D.warp(s, 5.0), 1.25)
+D.cmd_seek(2.0)
+D.cmd_play
+s[:wall0] -= 1.0                                                         # un secondo di Play
+t_before = D.warp(s, D.clock(s, Time.now.to_f))
+D.save_time(JSON.generate('preset' => 'linear', 'curve' => LIN, 'dur' => 5.0))   # ×2
+t_after = D.warp(s, D.clock(s, Time.now.to_f))
+eq('curva cambiata durante il Play: la timeline non salta', t_after, t_before, 0.02)
+eq('…e da lì corre al doppio', D.warp(s, D.clock(s, Time.now.to_f + 1.0)) - t_after, 2.0, 0.02)
+D.cmd_pause
+D.instance_variable_get(:@cfg)['play_repeat'] = true
+D.warp_setup(s)                                                          # come salvando le impostazioni
+D.cmd_seek(0.0)
+D.cmd_play
+D.advance(s[:wall0] + 6.0)                                               # 5 s a giro: 1 s nel secondo giro
+eq('«Ripeti»: la curva ricomincia a ogni giro', s[:t], 2.0)
+D.instance_variable_get(:@cfg)['play_repeat'] = false
+D.cmd_stop
+D.ext_begin(:video)
+D.ext_tick(1.0)
+eq('video di DagaWASD: la curva anche lì', D.session[:t], 2.0)
+eq('…e la barra mostra quell\'istante (non l\'orologio fermo del Play)', D.transport_state['t'], 2.0)
+D.ext_end(:video)
+D.save_time(JSON.generate('preset' => 'custom', 'curve' => [[0, 0], [0.4, 0.8], [0.7, 0.4], [1, 1]]))  # avanti, indietro, avanti
+D.cmd_seek(6.0)
+s = D.session
+eq('curva che torna indietro: la barra a 6 s dal primo passaggio', s[:c].between?(0.0, 4.0), true)
+s[:c] = 5.5
+D.cmd_seek(6.0)
+eq('…dal punto della riproduzione vicino al ritorno: il ritorno', s[:c].between?(4.0, 7.0), true)
+s[:c] = 9.0
+D.cmd_seek(6.0)
+eq('…vicino alla fine: l\'ultimo passaggio', s[:c].between?(7.0, 10.0), true)
+eq('…sempre la timeline a 6 s', D.warp(s, s[:c]), 6.0)
+tm.set_attribute(D::DICT, D::TIME_KEY, '')                             # Ctrl+Z: il modello senza la curva
+$run_timers = true
+D::ModelObs.new.onTransactionUndo(tm)
+$run_timers = false
+eq('Ctrl+Z della curva: di nuovo il tempo normale', [s[:warp], D.warp(s, 3.0), s[:t]], [nil, 3.0, 6.0])
+D.save_time(JSON.generate('preset' => 'linear', 'curve' => LIN))
+eq('lineare e lunga quanto la timeline: la chiave si svuota', tm.get_attribute(D::DICT, D::TIME_KEY), '')
+D.cmd_stop
+anim(bar, [tr('move_x', 0, 10.m, 10.0)], start: { 'mode' => 'trigger', 'act' => 'play' })
+D.save_time(JSON.generate('preset' => 'ease_in', 'dur' => 3.0))
+s = D.session_start(tm)
+eq('timeline vuota (solo azionati): la curva non conta', [s[:warp], D.play_len(s), D.warp(s, 1.5)], [nil, 0.0, 1.5])
+D.cmd_stop
+
+# ── Oggetto animato dentro un altro: l'ingombro dei contenitori segue ──
+# (lo scooter del video: move! lasciava ai contenitori l'ingombro di riposo,
+# e SketchUp non disegnava lo scooter quando quel vecchio ingombro usciva
+# dalla vista)
+nest = Sketchup::Model.new
+$model = nest
+D.model_changed(nest, true)
+outer = nest.add_group([0, 0, 0], [4.m, 4.m, 1.m])                      # contenitore nel modello
+mid = nest.add_group([0, 0, 0], [2.m, 2.m, 1.m])                        # contenitore dentro outer
+mid.parent = outer.definition
+rider = nest.add_group([0, 0, 0], [0.2.m, 0.2.m, 0.2.m])                # l'animato, dentro mid
+rider.parent = mid.definition
+solo = nest.add_group([0, 0, 0], [1.m, 1.m, 1.m])                       # animato nel modello
+anim(rider, [tr('move_x', 0, 1.m, 1.0)])
+anim(solo, [tr('move_y', 0, 1.m, 1.0)])
+D::ModelObs.new.onTransactionCommit(nest)
+D.cmd_seek(0.5)
+eq('spostato dentro due contenitori: tutti e due rifanno l\'ingombro', [mid.definition.stale > 0, outer.definition.stale > 0], [true, true])
+eq('…e lui è a metà strada', org(rider)[0], 0.5)
+st = [mid.definition.stale, outer.definition.stale]
+D.cmd_seek(0.8)
+eq('a ogni passo', [mid.definition.stale > st[0], outer.definition.stale > st[1]], [true, true])
+eq('l\'animato nel modello non tocca i contenitori degli altri', solo.definition.stale, 0)
+st = [mid.definition.stale, outer.definition.stale]
+D.cmd_stop
+eq('Stop: a riposo, e l\'ingombro si rifà anche lì', [org(rider)[0], mid.definition.stale > st[0], outer.definition.stale > st[1]], [0.0, true, true])
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

@@ -13,7 +13,8 @@ dagadyn/lib/
   i18n.rb  settings.rb  win32.rb      come in DagaWASD (lingue, settings.json, registro, appunti)
   curves.rb             curve PCHIP con punti ad angolo, preset   ← stessa copia in panel.html
   color.rb              colori, miscela in OKLab
-  tracks.rb             dati negli attributi dell'istanza (dizionario "DagaDyn", chiave "data")
+  tracks.rb             dati negli attributi dell'istanza (dizionario "DagaDyn", chiave "data");
+                        velocità del tempo in quelli del modello (chiave "time")
   props.rb              valori di riposo, trasformazione animata, materiali temporanei
   player.rb             motore: sessione, tempo, partenze (catene, azionati), advance(now), view.animation
   api.rb                collegamento con DagaWASD: ext_begin/ext_tick/ext_end, carry, kinematic?, use
@@ -30,6 +31,8 @@ tools/test_live.rb      nel SketchUp vero, dal ponte di DagaWASD: tempi, salvata
                         (solo con un modello nuovo aperto, mai salvato: al più la figura del
                         modello di partenza; ne lascia uno nuovo)
 tools/crea_rbz.rb       pacchetto dist/dagadyn-<versione>.rbz (vuole la sezione nel CHANGELOG)
+tools/esempio_cameretta.rb  costruisce in SketchUp la cameretta di examples/bedroom.skp (tutte le funzioni)
+tools/crea_esempio.rb   dal ponte di DagaWASD, in un modello nuovo: la costruisce e la salva (formato 2021)
 ```
 
 ## Sviluppo
@@ -77,5 +80,13 @@ li segue entro un secondo. Menu e barra nascono prima che DagaWASD sia caricata:
   finisce sempre lo stato di progetto.
 - Il motore non dipende da chi batte il tempo: `advance(now)` con `view.animation`, `ext_tick(secondi)`
   con DagaWASD.
+- Due tempi: l'orologio della riproduzione `c` (quello che battono Play e DagaWASD) e il tempo della
+  timeline `t = warp(c)`, uguali finché il modello non ha una velocità del tempo. Quella è una curva come
+  le transizioni, negli attributi del modello (chiave `time`, JSON `{v, preset, curve, dur}`; `read_time` e
+  `write_time` in `lib/tracks.rb`): in x la riproduzione da 0 a P (`dur`, o la durata della timeline T), in
+  y la timeline da 0 a T. Fine e «Ripeti» si decidono su `c` (`play_len`), perché una curva che va oltre
+  la meta supera T prima della fine; oggetti e barra usano `t`. Spostare la barra cerca il punto della
+  curva che dà quell'istante, il più vicino a dov'era (`unwarp`); se cambiano la curva o la durata della
+  timeline, `warp_keep` lascia la timeline dov'è e cambia solo da lì in avanti.
 - Colore, opacità, visibilità, tag e piani di sezione cambiano il modello: vanno in operazioni trasparenti
   accodate alla prima voce della sessione. Dopo un Ctrl+Z la sessione apre una voce nuova.

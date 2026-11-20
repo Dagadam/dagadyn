@@ -10,6 +10,8 @@ se acendem, cortes que atravessam um edifício.
 
 ⬇ **Transferir**: [última versão](https://github.com/Dagadam/dagadyn/releases/latest) (todas as versões: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Exemplo**: [um quarto onde tudo se mexe](examples/README.md) (`examples/bedroom.skp`), com todas as funções do DagaDyn.
+
 ## O que faz
 
 - **Propriedades**: deslocamento (a partir de onde o objeto está), posição,
@@ -22,6 +24,10 @@ se acendem, cortes que atravessam um edifício.
   ou uma sua, desenhada no editor de curvas arrastando os pontos.
 - **Linha do tempo**: Reproduzir, Pausa, Stop e uma barra para ver qualquer
   instante. Uma vez, em ciclo ou em ida e volta, à velocidade que quiser.
+- **Velocidade do tempo**: com o botão **⏱** ao lado da linha do tempo,
+  uma curva como as das transições decide como passa o tempo em todo o
+  modelo: mais íngreme para um time-lapse, mais plana para uma câmara lenta,
+  e a reprodução pode durar menos ou mais do que a linha do tempo.
 - **Inícios**: um objeto começa com a linha do tempo, depois de outro
   terminar (mais uma espera), ou **ao ser acionado**: um clique com a
   ferramenta *Acionar*. Pode recomeçar do início de cada vez, ou avançar e

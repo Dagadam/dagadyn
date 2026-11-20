@@ -11,6 +11,8 @@ un bâtiment.
 
 ⬇ **Télécharger** : [dernière version](https://github.com/Dagadam/dagadyn/releases/latest) (toutes les versions : [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Exemple** : [une chambre où tout bouge](examples/README.md) (`examples/bedroom.skp`), avec toutes les fonctions de DagaDyn.
+
 ## Ce qu'elle fait
 
 - **Propriétés** : déplacement (depuis la place de l'objet), position,
@@ -24,6 +26,10 @@ un bâtiment.
   ses points.
 - **Timeline** : Lecture, Pause, Stop et une barre pour voir n'importe quel
   instant. Une fois, en boucle ou en aller-retour, à la vitesse voulue.
+- **Vitesse du temps** : avec le bouton **⏱** à côté de la timeline, une
+  courbe comme celles des transitions décide comment passe le temps dans
+  tout le modèle : plus raide pour un accéléré, plus plate pour un ralenti,
+  et la lecture peut durer moins ou plus que la timeline.
 - **Démarrages** : un objet démarre avec la timeline, après qu'un autre a
   fini (plus une attente), ou **quand on l'actionne** : un clic avec l'outil
   *Actionner*. Il peut recommencer depuis le début à chaque fois, ou avancer

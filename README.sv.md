@@ -10,6 +10,8 @@ snitt som vandrar genom en byggnad.
 
 ⬇ **Ladda ned**: [senaste versionen](https://github.com/Dagadam/dagadyn/releases/latest) (alla versioner: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Exempel**: [ett sovrum där allt rör sig](examples/README.md) (`examples/bedroom.skp`), med alla funktioner i DagaDyn.
+
 ## Vad det gör
 
 - **Egenskaper**: flytt (från där objektet står), position, rotation,
@@ -23,6 +25,10 @@ snitt som vandrar genom en byggnad.
 - **Tidslinje**: Spela, Paus, Stopp och ett reglage för att se varje
   ögonblick. En gång, i slinga eller fram och tillbaka, i den hastighet du
   vill.
+- **Tidens hastighet**: med knappen **⏱** bredvid tidslinjen bestämmer en
+  kurva som för övergångarna hur tiden går i hela modellen: brantare för en
+  timelapse, flackare för slow motion, och uppspelningen kan vara kortare
+  eller längre än tidslinjen.
 - **Start**: ett objekt startar med tidslinjen, efter att ett annat är klart
   (plus en väntan), eller **när det används**: ett klick med verktyget
   *Använd*. Det kan börja om från början varje gång, eller gå framåt och

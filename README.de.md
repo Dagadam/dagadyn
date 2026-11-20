@@ -11,6 +11,8 @@ Gebäude wandern.
 
 ⬇ **Download**: [neueste Version](https://github.com/Dagadam/dagadyn/releases/latest) (alle Versionen: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Beispiel**: [ein Kinderzimmer, in dem sich alles bewegt](examples/README.md) (`examples/bedroom.skp`), mit allen Funktionen von DagaDyn.
+
 ## Was sie kann
 
 - **Eigenschaften**: Verschiebung (von dort, wo das Objekt ist), Position,
@@ -25,6 +27,10 @@ Gebäude wandern.
 - **Zeitleiste**: Abspielen, Pause, Stopp und ein Balken, um jeden
   Augenblick zu sehen. Einmal, in Schleife oder hin und zurück, in der
   Geschwindigkeit, die du willst.
+- **Geschwindigkeit der Zeit**: Mit der Taste **⏱** neben der Zeitleiste
+  bestimmt eine Kurve wie bei den Übergängen, wie die Zeit im ganzen Modell
+  vergeht: steiler für einen Zeitraffer, flacher für eine Zeitlupe, und die
+  Wiedergabe kann kürzer oder länger dauern als die Zeitleiste.
 - **Starts**: Ein Objekt startet mit der Zeitleiste, nachdem ein anderes
   fertig ist (plus Wartezeit), oder **beim Benutzen**: ein Klick mit dem
   Werkzeug *Benutzen*. Es kann jedes Mal von vorn beginnen oder vorwärts

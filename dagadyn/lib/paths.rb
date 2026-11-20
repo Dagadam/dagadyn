@@ -191,6 +191,7 @@ module DagaDyn
       def activate
         @hover = nil
         @at = nil
+        @tip = nil                # cambiando strumento SketchUp toglie il nome: va rimesso
         Dyn.use_tool(true)
         # Gli oggetti si muovono anche col mouse fermo: durante l'animazione
         # si riguarda cosa c'è sotto, o il riquadro resterebbe su un oggetto

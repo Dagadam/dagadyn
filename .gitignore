@@ -2,3 +2,5 @@ dist/
 *.tmp
 avviaClaude.bat
 .claude/
+/*.txt
+*.skb

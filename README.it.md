@@ -10,6 +10,8 @@ che si accendono, sezioni che attraversano un edificio.
 
 ⬇ **Scarica**: [ultima versione](https://github.com/Dagadam/dagadyn/releases/latest) (tutte le versioni: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
+🛏 **Esempio**: [una cameretta in cui si muove tutto](examples/README.md) (`examples/bedroom.skp`), con tutte le funzioni di DagaDyn.
+
 ## Cosa fa
 
 - **Proprietà**: spostamento (da dov'è l'oggetto), posizione, rotazione,
@@ -22,6 +24,10 @@ che si accendono, sezioni che attraversano un edificio.
   pallini.
 - **Timeline**: Play, Pausa, Stop e una barra per vedere qualsiasi istante.
   Una volta, in ciclo o avanti e indietro, alla velocità che vuoi.
+- **Velocità del tempo**: con il tasto **⏱** accanto alla timeline, una
+  curva come quelle delle transizioni decide come scorre il tempo di tutto
+  il modello: più ripida per un time-lapse, più piatta per un rallentatore,
+  e la riproduzione può durare meno o più della timeline.
 - **Partenze**: un oggetto parte con la timeline, dopo che un altro ha finito
   (più un'attesa), oppure **quando lo si aziona**: un clic con lo strumento
   *Aziona*. Può ripartire ogni volta da capo, o andare avanti e la volta dopo
