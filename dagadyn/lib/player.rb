@@ -66,9 +66,21 @@ module DagaDyn
       @session = { model: model, items: {}, by_pid: {}, state: :paused, t: 0.0, c: 0.0, c0: 0.0, wall0: 0.0,
                    first_op: true, panel_at: 0.0, tick: 0, ext: nil, ext_c0: 0.0, hold: false,
                    shadows: false, total: 0.0, loops: false, warp: nil }
-      animated_instances(model).each { |e, data| item_add(e, data) }
+      # Un'operazione nostra (il materiale temporaneo di un oggetto) chiude
+      # quella ancora aperta di chi ci chiama (uno script che ha appena
+      # cancellato qualcosa): a metà elenco quegli oggetti spariscono davvero.
+      # Finché è aperta, invece, sono ancora validi ma fuori dal modello.
+      animated_instances(model).each { |e, data| item_add(e, data) if e.valid? && (section?(e) || in_model?(e)) }
       recalc_total
       @session
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      begin
+        session_end                    # niente sessione a metà: gli oggetti già presi tornano a riposo
+      rescue StandardError
+        @session = nil
+      end
+      nil
     end
 
     # Fine della sessione: gli oggetti tornano a riposo (o, con keep,

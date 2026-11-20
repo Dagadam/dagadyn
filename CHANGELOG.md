@@ -74,6 +74,10 @@
   non seguiva la selezione, salvataggio senza ritorno a riposo, e «invalid overlay» nel registro cambiando
   un'impostazione. Ora a ogni documento nuovo o aperto si riaggancia tutto.
 - Un materiale eliminato durante l'animazione (Elimina inutilizzati) non impedisce più il ripristino allo Stop.
+- **Animazione che parte subito dopo una cancellazione fatta da uno script** (un'altra estensione, la console
+  Ruby, DagaWASD che avvia un video): se lo script aveva appena eliminato un gruppo con oggetti animati dentro,
+  la partenza si fermava con «reference to deleted Group» nel registro e lasciava una sessione a metà. Ora quegli
+  oggetti si saltano, e se qualcosa va storto non resta una sessione a metà.
 - **Componenti non più usati**: un oggetto animato dentro un componente tolto dal modello (resta fra i componenti
   «Nel modello») compariva ancora nella Scena e allungava la timeline. Ora conta solo ciò che è nel modello.
 - **Editor delle curve**: «Usa per tutte le transizioni» compariva anche quando la traccia ne ha una sola.

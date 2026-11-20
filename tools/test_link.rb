@@ -672,5 +672,38 @@ D.cmd_seek(1.0)
 eq('giro chiuso salvato lo stesso: niente blocco, valori finiti', [xlen(lastra), xlen(cubo)].all?(&:finite?), true)
 D.cmd_stop
 
+# ── Sessione che parte dentro un'operazione aperta di uno script ──
+# Lo script ha appena cancellato un contenitore: gli animati dentro sono
+# ancora validi ma fuori dal modello, e l'elenco in memoria li ha ancora (si
+# rifà al commit). In SketchUp la prima operazione nostra chiude quella dello
+# script e loro spariscono a metà elenco: «reference to deleted Group» e una
+# sessione lasciata a metà (registro del 18/11).
+gm = Sketchup::Model.new
+$model = gm
+D.model_changed(gm, true)
+box = gm.add_group([0, 0, 0], [4.m, 4.m, 1.m])
+dentro = gm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+dentro.parent = box.definition
+fuori = gm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+anim(dentro, [tr('move_x', 0, 1.m, 1.0)])
+anim(fuori, [tr('move_y', 0, 1.m, 1.0)])
+D::ModelObs.new.onTransactionCommit(gm)
+eq('prima: tutti e due animati', D.animated_instances(gm).map(&:first), [dentro, fuori])
+box.erase!                                                               # operazione dello script ancora aperta
+s = D.session_start(gm)
+eq('la sessione prende solo chi è ancora nel modello', s && s[:items].keys, [fuori])
+D.session_end
+D::ModelObs.new.onTransactionCommit(gm)
+def fuori.transformation; raise TypeError, 'reference to deleted Group'; end
+logged = []
+D.singleton_class.alias_method(:log_error_prove, :log_error)
+D.define_singleton_method(:log_error) { |w, e| logged << "#{w}: #{e.class}" }
+begin
+  eq('un oggetto che sparisce a metà: niente sessione a metà', [D.session_start(gm), D.session], [nil, nil])
+ensure
+  D.singleton_class.alias_method(:log_error, :log_error_prove)
+end
+eq('…e l\'errore va nel registro', logged, ['session_start: TypeError'])
+
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)
