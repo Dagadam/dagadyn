@@ -8,6 +8,8 @@ outro no tempo que escolher, segundo uma curva que desenha, e vê isso
 acontecer na cena. Portas que se abrem, elevadores que sobem, candeeiros que
 se acendem, cortes que atravessam um edifício.
 
+▶ Apresentação oficial: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Transferir**: [última versão](https://github.com/Dagadam/dagadyn/releases/latest) (todas as versões: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Exemplo**: [um quarto onde tudo se mexe](examples/README.md) (`examples/bedroom.skp`), com todas as funções do DagaDyn.

@@ -8,6 +8,8 @@ you choose, along a curve you draw, and you watch it happen in the scene.
 Doors that open, lifts that rise, lamps that light up, sections that sweep
 through a building.
 
+▶ Official presentation: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Download**: [latest release](https://github.com/Dagadam/dagadyn/releases/latest) (all versions: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Example**: [a bedroom where everything moves](examples/README.md) (`examples/bedroom.skp`), with every feature of DagaDyn.

@@ -4,6 +4,8 @@
 
 一个让物体动起来的 SketchUp 扩展程序。组、组件或剖切面的每个属性，都会在你选定的时间内，沿你自己画的曲线，从一个状态变为另一个状态，你能在场景中看到这一过程。打开的门、上升的电梯、点亮的灯、穿过建筑的剖切。
 
+▶ 官方介绍视频：https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **下载**：[最新版本](https://github.com/Dagadam/dagadyn/releases/latest)（所有版本：[Releases](https://github.com/Dagadam/dagadyn/releases)）
 
 🛏 **示例**：[一切都会动的卧室](examples/README.md)（`examples/bedroom.skp`），展示 DagaDyn 的全部功能。

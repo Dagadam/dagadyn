@@ -8,6 +8,8 @@ annat under den tid du väljer, längs en kurva du ritar själv, och du ser det
 hända i scenen. Dörrar som öppnas, hissar som åker upp, lampor som tänds,
 snitt som vandrar genom en byggnad.
 
+▶ Officiell presentation: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Ladda ned**: [senaste versionen](https://github.com/Dagadam/dagadyn/releases/latest) (alla versioner: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Exempel**: [ett sovrum där allt rör sig](examples/README.md) (`examples/bedroom.skp`), med alla funktioner i DagaDyn.

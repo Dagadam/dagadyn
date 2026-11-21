@@ -416,5 +416,12 @@ module DagaDyn
       model.select_tool(UseTool.new)
     end
 
+    # Pulsante della barra e voce del menu: di nuovo, con lo strumento già
+    # attivo, se ne esce come con Esc.
+    def self.toggle_use_tool
+      model = Sketchup.active_model or return
+      use_tool_on? ? model.select_tool(nil) : start_use_tool
+    end
+
   end
 end

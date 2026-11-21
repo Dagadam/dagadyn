@@ -8,6 +8,8 @@ zvolíte, podle křivky, kterou si nakreslíte, a vy to vidíte ve scéně.
 Dveře, které se otvírají, výtahy, které stoupají, lampy, které se
 rozsvěcují, řezy, které procházejí budovou.
 
+▶ Oficiální představení: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Stáhnout**: [nejnovější verze](https://github.com/Dagadam/dagadyn/releases/latest) (všechny verze: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Ukázka**: [ložnice, kde se všechno hýbe](examples/README.md) (`examples/bedroom.skp`), se všemi funkcemi DagaDyn.

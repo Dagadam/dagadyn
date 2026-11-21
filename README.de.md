@@ -9,6 +9,8 @@ anderen über, und du siehst es in der Szene geschehen. Türen, die aufgehen,
 Aufzüge, die hochfahren, Lampen, die angehen, Schnitte, die durch ein
 Gebäude wandern.
 
+▶ Offizielle Präsentation: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Download**: [neueste Version](https://github.com/Dagadam/dagadyn/releases/latest) (alle Versionen: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Beispiel**: [ein Kinderzimmer, in dem sich alles bewegt](examples/README.md) (`examples/bedroom.skp`), mit allen Funktionen von DagaDyn.

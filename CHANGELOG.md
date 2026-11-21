@@ -1,6 +1,6 @@
 # Novità di DagaDyn
 
-## [0.3.0] — 2026-11-16
+## [0.3.0] — 2026-11-21
 
 ### Novità
 - **In catena dietro un oggetto azionato «avanti/indietro» si segue la sua direzione** (leva → ponte levatoio,
@@ -50,6 +50,8 @@
 ### Strumento Aziona
 - Sotto il mouse l'oggetto che si aziona ha il riquadro colorato, il nome accanto e il cursore con il simbolo di
   Aziona: si vede prima di cliccare che cosa partirà.
+- Il pulsante Aziona della barra ha la mano con l'indice alzato (☝), lo stesso simbolo dello strumento nel pannello.
+- Un secondo clic sul pulsante Aziona (nella barra, nel menu o il ☝ del pannello) esce dallo strumento, come Esc.
 
 ### Correzioni
 - **Il quadrato rosso (Stop) della barra non faceva niente**: ora ferma l'animazione come Stop nel menu.

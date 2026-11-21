@@ -9,6 +9,8 @@ et vous le voyez se produire dans la scène. Des portes qui s'ouvrent, des
 ascenseurs qui montent, des lampes qui s'allument, des coupes qui traversent
 un bâtiment.
 
+▶ Présentation officielle : https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Télécharger** : [dernière version](https://github.com/Dagadam/dagadyn/releases/latest) (toutes les versions : [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Exemple** : [une chambre où tout bouge](examples/README.md) (`examples/bedroom.skp`), avec toutes les fonctions de DagaDyn.

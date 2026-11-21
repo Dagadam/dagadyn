@@ -2108,7 +2108,7 @@ function setRunning(state){
 
 /* ═══════════════════════════════════════════════════════════════
    OGGETTO SELEZIONATO
-   setSelection da Ruby: {kind:'none'|'raw'|'multi'|'obj', …}; per 'obj'
+   setSelection da Ruby: {kind:'none'|'raw'|'obj', …}; per 'obj'
    pid (persistent_id), name, type, rest (valori di riposo), data
    ({pivot, tracks}) e live (fa parte della sessione in corso).
    Ogni modifica va a Ruby (save_tracks) dopo una breve pausa: una voce
@@ -2258,7 +2258,7 @@ function renderObj(){
   if(!box) return;
   const s = SEL;
   if(s.kind !== 'obj'){
-    const msg = s.kind === 'raw' ? T('ob.raw') : s.kind === 'multi' ? T('ob.multi').replace('{n}', s.n) : T('ob.none');
+    const msg = s.kind === 'raw' ? T('ob.raw') : T('ob.none');
     box.innerHTML = `<div class="note">${esc(msg)}</div>`
       + (s.kind === 'raw' ? `<div class="mbtns"><button class="btn btn-sm" onclick="sketchup.make_group()">▣ ${esc(T('ob.make_group'))}</button></div>` : '');
     return;

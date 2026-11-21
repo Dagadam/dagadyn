@@ -4,6 +4,8 @@
 
 객체를 움직이게 하는 SketchUp 확장 프로그램입니다. 그룹, 컴포넌트, 단면 평면의 모든 속성이 선택한 시간 동안, 직접 그린 곡선을 따라 한 상태에서 다른 상태로 바뀌고, 그 모습을 장면에서 볼 수 있습니다. 열리는 문, 올라가는 엘리베이터, 켜지는 조명, 건물을 가로지르는 단면.
 
+▶ 공식 소개 영상: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **다운로드**: [최신 버전](https://github.com/Dagadam/dagadyn/releases/latest) (모든 버전: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **예제**: [모든 것이 움직이는 침실](examples/README.md) (`examples/bedroom.skp`), DagaDyn의 모든 기능을 담았습니다.

@@ -210,6 +210,34 @@ eq('faccia dipinta: copia temporanea a metà opacità', [f1.material.name.start_
 D.cmd_stop
 eq('faccia di nuovo col suo materiale', f1.material.equal?(brick), true)
 
+# Due copie dello stesso componente, tutte e due con «anche le facce»: la
+# definizione è comune, quindi la seconda copia le facce già dipinte dalla
+# prima. Cambiando i dati di una durante la sessione (lei esce e rientra:
+# l'ordine si inverte), allo Stop le facce tornano lo stesso al materiale vero.
+[0, 1].each do |chi|
+  wood = $model.materials.add("Legno #{chi}")
+  ca = $model.add_group([0, 0, 0], [1.m, 1.m, 1.m], Geom::Transformation.new, Sketchup::ComponentInstance)
+  cb = Sketchup::ComponentInstance.new(ca.definition, Geom::Transformation.translation(Geom::Vector3d.new(3.m, 0, 0)))
+  f2 = Sketchup::Face.new; f2.material = wood
+  ca.definition.entities << f2
+  anim(ca, [tr('opacity', 1.0, 0.0, 1.0)], faces: true)
+  anim(cb, [tr('opacity', 1.0, 0.5, 1.0)], faces: true)
+  D.cmd_seek(0.5)
+  eq("copie con le facce (#{chi}): faccia con un materiale temporaneo", f2.material.name.start_with?(D::TEMP_MAT), true)
+  mod = [ca, cb][chi]
+  $model.start_operation('modifica')
+  d = D.read_data(mod)
+  d['tracks'][0]['keys'][1]['v'] = 0.25
+  D.write_data(mod, d)
+  $model.commit_operation
+  D.session_update(mod, D.read_data(mod))
+  eq("…modificata la copia #{chi + 1}: le facce restano animate", f2.material.name.start_with?(D::TEMP_MAT), true)
+  D.cmd_stop
+  eq("…allo Stop la faccia torna al suo materiale", f2.material.equal?(wood), true)
+  eq("…e nessun materiale temporaneo resta nel modello", $model.materials.count { |m| m.name.start_with?(D::TEMP_MAT) }, 0)
+  [ca, cb].each { |x| $model.start_operation('via'); D.write_data(x, D.empty_data); $model.commit_operation }
+end
+
 # ── Lingua e aspetto da DagaWASD ──
 eq('senza cf di DagaWASD: niente in comune', D.ui_shared?, false)
 own = D.cf('ui_theme')

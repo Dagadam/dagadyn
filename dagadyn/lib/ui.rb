@@ -18,7 +18,7 @@ module DagaDyn
       sub.add_separator
       sub.add_item(t('menu.play'))  { cmd_toggle }
       sub.add_item(t('menu.stop'))  { cmd_stop }
-      sub.add_item(t('menu.use'))   { start_use_tool }
+      sub.add_item(t('menu.use'))   { toggle_use_tool }
 
       tb = UI::Toolbar.new('DagaDyn')
       btn_panel = UI::Command.new('DagaDyn') { show_panel }
@@ -41,7 +41,7 @@ module DagaDyn
       btn_stop.set_validation_proc { @session ? MF_ENABLED : MF_GRAYED } if btn_stop.respond_to?(:set_validation_proc)
       tb.add_item(btn_stop)
 
-      btn_use = UI::Command.new('DagaDyn Aziona') { start_use_tool }
+      btn_use = UI::Command.new('DagaDyn Aziona') { toggle_use_tool }
       btn_use.tooltip = t('tip.use')
       btn_use.status_bar_text = t('tip.use')
       icon(btn_use, 'use')

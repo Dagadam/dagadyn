@@ -4,6 +4,8 @@
 
 オブジェクトを動かす SketchUp 拡張機能です。グループ、コンポーネント、断面平面のあらゆるプロパティが、選んだ時間で、自分で描いたカーブに沿って、ある状態から別の状態へ移り、それがシーンの中で見えます。開くドア、上がるエレベーター、点くランプ、建物を横切る断面。
 
+▶ 公式紹介動画：https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **ダウンロード**: [最新バージョン](https://github.com/Dagadam/dagadyn/releases/latest)（すべてのバージョン: [Releases](https://github.com/Dagadam/dagadyn/releases)）
 
 🛏 **サンプル**: [すべてが動く寝室](examples/README.md)（`examples/bedroom.skp`）。DagaDyn のすべての機能を使っています。

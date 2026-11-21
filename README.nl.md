@@ -8,6 +8,8 @@ andere in de tijd die je kiest, langs een curve die je zelf tekent, en je
 ziet het gebeuren in de scène. Deuren die opengaan, liften die stijgen,
 lampen die aangaan, sneden die door een gebouw schuiven.
 
+▶ Officiële presentatie: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Downloaden**: [nieuwste versie](https://github.com/Dagadam/dagadyn/releases/latest) (alle versies: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Voorbeeld**: [een slaapkamer waarin alles beweegt](examples/README.md) (`examples/bedroom.skp`), met alle functies van DagaDyn.

@@ -188,7 +188,7 @@ module DagaDyn
       unless twins.empty?
         moves = origin.filter_map { |e, o| copy_delta(model, e, o) }
         twins.each do |e, tw|
-          hit = tw.select { |x| (dd = copy_delta(model, e, x)) && moves.any? { |mv| same_tr?(dd, mv) } }
+          hit = tw.select { |x| (dd = copy_delta(model, e, x)) && moves.any? { |mv| copy_same?(dd, mv) } }
           origin[e] = hit[0] if hit.size == 1
         end
       end
@@ -233,7 +233,7 @@ module DagaDyn
         list = by_orig[p] or return p
         return list[0].persistent_id if list.size == 1
         mine ||= copy_delta(model, e, o) or return p
-        hit = list.find { |c| (dd = copy_delta(model, c, p)) && same_tr?(dd, mine) }
+        hit = list.find { |c| (dd = copy_delta(model, c, p)) && copy_same?(dd, mine) }
         hit ? hit.persistent_id : p
       end
       d = JSON.parse(JSON.generate(data))
@@ -255,7 +255,7 @@ module DagaDyn
       (world_of(c) * c.transformation) * (world_of(x) * x.transformation).inverse
     end
 
-    def self.same_tr?(a, b)
+    def self.copy_same?(a, b)
       a.to_a.zip(b.to_a).all? { |p, q| (p - q).abs < 1e-3 }
     end
 

@@ -8,6 +8,8 @@ all'altro nel tempo che scegli, lungo una curva che disegni tu, e la vedi
 succedere nella scena. Porte che si aprono, ascensori che salgono, lampade
 che si accendono, sezioni che attraversano un edificio.
 
+▶ Presentazione ufficiale: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Scarica**: [ultima versione](https://github.com/Dagadam/dagadyn/releases/latest) (tutte le versioni: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Esempio**: [una cameretta in cui si muove tutto](examples/README.md) (`examples/bedroom.skp`), con tutte le funzioni di DagaDyn.

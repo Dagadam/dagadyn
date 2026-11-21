@@ -9,6 +9,8 @@
 поднимаются, лампы, которые зажигаются, сечения, которые проходят сквозь
 здание.
 
+▶ Официальная презентация: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Скачать**: [последняя версия](https://github.com/Dagadam/dagadyn/releases/latest) (все версии: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Пример**: [спальня, где всё движется](examples/README.md) (`examples/bedroom.skp`), со всеми возможностями DagaDyn.

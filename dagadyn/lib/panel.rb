@@ -414,7 +414,7 @@ module DagaDyn
       cb.call('make_group')  { |_| make_group }
       cb.call('select_obj')  { |pid| select_pid(pid) }
       cb.call('preview')     { |json| preview_obj(json) }
-      cb.call('use_tool')    { |_| start_use_tool }
+      cb.call('use_tool')    { |_| toggle_use_tool }   # di nuovo: se ne esce, come con Esc
       cb.call('fx_check')    { |json| js("fxChecked(#{js_json(fx_check(json))})") }
       cb.call('fx_bake')     { |json| js("fxBaked(#{js_json(fx_bake(json))})") }
 

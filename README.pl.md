@@ -8,6 +8,8 @@ czasie, który wybierzesz, wzdłuż krzywej, którą sam narysujesz, a ty widzis
 to w scenie. Drzwi, które się otwierają, windy, które jadą w górę, lampy,
 które się zapalają, przekroje, które przesuwają się przez budynek.
 
+▶ Oficjalna prezentacja: https://youtu.be/Nj9Y0vReBeE
+
 ⬇ **Pobierz**: [najnowsza wersja](https://github.com/Dagadam/dagadyn/releases/latest) (wszystkie wersje: [Releases](https://github.com/Dagadam/dagadyn/releases))
 
 🛏 **Przykład**: [sypialnia, w której wszystko się rusza](examples/README.md) (`examples/bedroom.skp`), ze wszystkimi funkcjami DagaDyn.
