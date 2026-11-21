@@ -32,7 +32,7 @@ encienden, secciones que recorren un edificio.
 - **Fórmulas y enlaces**: una transición puede seguir una fórmula en lugar
   de la curva (por ejemplo `v0 + (2 - v0) * u`) y, con parámetros, leer otras
   pistas, también de otros objetos: su valor o el avance de una de sus
-  transiciones. La losa se ensancha mientras el cubo crece. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  transiciones. La losa se ensancha mientras el cubo crece. El panel dibuja la fórmula y puede convertirla en una curva de puntos; los objetos vinculados copiados juntos siguen vinculados entre sí. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Inicios**: un objeto empieza con la línea de tiempo, después de que otro
   termine (más una espera), o **al accionarlo**: un clic con la herramienta
   *Accionar*. Puede empezar cada vez desde el principio, o avanzar y la vez

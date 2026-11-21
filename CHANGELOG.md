@@ -20,6 +20,14 @@
   nelle unità del pannello; la transizione dopo riparte da dove l'ha lasciata la formula. Il pannello segnala
   formule sbagliate, oggetti o tracce che non ci sono più e collegamenti circolari. Le formule non eseguono
   codice: un interprete conosce solo numeri, operatori e quelle funzioni.
+- **Vedere le formule**: al posto della miniatura della curva il grafico della formula, calcolato con gli altri
+  oggetti dove li porta la timeline, e accanto a «dove la porta la formula» il valore a cui arriva. Con le
+  traiettorie accese, una linea tratteggiata va da ogni oggetto letto a chi lo legge, con il nome del parametro.
+- **«Converti in curva»**: una transizione a formula diventa stati e curve a pallini che fanno lo stesso movimento
+  con i valori di adesso (uno stato a ogni inversione di marcia), da ritoccare a mano. Si torna indietro con Ctrl+Z.
+- **Copie di oggetti collegati**: copiati insieme (Copia/Incolla, Sposta con Ctrl, una serie, un gruppo che li
+  contiene), le formule e le catene «dopo un altro oggetto» passano alle copie: la lastra copiata legge il cubo
+  copiato, non quello di prima. Verso un oggetto non copiato restano com'erano.
 
 ### Esempio
 - **examples/bedroom.skp**: una cameretta in cui si muove tutto, con tutte le funzioni di DagaDyn (giorno e

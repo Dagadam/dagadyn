@@ -15,8 +15,8 @@ module DagaDyn
     class ModelObs < Sketchup::ModelObserver
       def onPreSaveModel(_m);  Dyn.session_suspend; end
       def onPostSaveModel(_m); Dyn.session_resume; end
-      def onTransactionUndo(_m); Dyn.anim_dirty; Dyn.after_undo(-1); end
-      def onTransactionRedo(_m); Dyn.anim_dirty; Dyn.after_undo(1); end
+      def onTransactionUndo(m); Dyn.anim_dirty; Dyn.copies_known(m); Dyn.after_undo(-1); end
+      def onTransactionRedo(m); Dyn.anim_dirty; Dyn.copies_known(m); Dyn.after_undo(1); end
       def onTransactionAbort(_m); Dyn.anim_dirty; end
       def onTransactionCommit(_m)
         Dyn.anim_dirty                      # copie, eliminazioni, importazioni
@@ -56,7 +56,10 @@ module DagaDyn
         @session = nil
       end
       observe_model(model, fresh)
-      UI.start_timer(0, false) { purge_temp_materials(model) if model && model.valid? && !@session }
+      UI.start_timer(0, false) do
+        purge_temp_materials(model) if model && model.valid? && !@session
+        copies_known(model)              # gli oggetti di partenza: le copie si riconoscono da qui
+      end
       panel_transport
       panel_selection
     rescue => dyn_err

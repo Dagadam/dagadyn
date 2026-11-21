@@ -210,7 +210,8 @@ eq('velocità scritte come ×', r3['fmt'], ['6.0', '0.50', '−1.3', '120', '—
 # la stessa traccia) e gli altri; gli errori arrivano da Ruby (fxChecked).
 script4 = <<~JS
   const errEls = [];
-  const document = {querySelectorAll: s => s === '.fxerr' ? errEls : []};
+  const bakeErr = {textContent:''};
+  const document = {querySelectorAll: s => s === '.fxerr' ? errEls : [], querySelector: s => s === '.fxerr[data-k="0_1"]' ? bakeErr : null};
   function T(k){ return k; }
   function curveThumb(){ return '<svg/>'; }
   function presetName(id){ return 'cv.' + id; }
@@ -223,15 +224,16 @@ script4 = <<~JS
   function setTimeout(f){ timers++; return 0; }
   function clearTimeout(){}
   const sent = [];
-  const sketchup = {fx_check: j => sent.push(JSON.parse(j))};
+  const sketchup = {fx_check: j => sent.push(JSON.parse(j)), fx_bake: j => sent.push(['bake', JSON.parse(j)])};
   #{html[/^const PROPS = \{.*?\};\n/m]}
   #{html[/^const LEN_DEC.*$/]}
   #{html[/^let UNIT = .*$/]}
   #{html[/^const FX_KINDS.*$/]}
   #{html[/^let FX_ERR = .*$/]}
+  #{html[/^let FX_PLOT = .*$/]}
   #{%w[esc escA kindOf fmtSec fxKey fxParamDel fxParamProp fxParamAt].map { |n| js_line(html, n) }.join("\n")}
   #{%w[toDisp unitOf decOf fmtVal keyTime valInput trackHTML fxSources fxHTML fxParamHTML fxOn fxExpr fxParamAdd
-       fxParamName fxParamObj fxErrText fxCheckSoon fxCheck fxChecked].map { |n| js_fn(html, n) }.join}
+       fxParamName fxParamObj fxErrText fxCheckSoon fxCheck fxChecked fxPlotOf fxPlotSvg fxEndText fxBake fxBaked].map { |n| js_fn(html, n) }.join}
   let CV = {i:0, j:1};
   const M = 39.37007874;
   let SEL = {kind:'obj', pid:5, name:'Solido', data:{tracks:[
@@ -247,7 +249,8 @@ script4 = <<~JS
   const k = SEL.data.tracks[0].keys[1];
   out.on = [k.fx.on, k.fx.expr, closed, changes[changes.length - 1]];
   const h1 = trackHTML(SEL.data.tracks[0], 0);
-  out.after = [h1.includes('cthumb'), h1.includes('fxexpr'), h1.includes('fxend'), (h1.match(/class="vbox" type="text"/g) || []).length];
+  out.after = [h1.includes('openCurve('), h1.includes('fxexpr'), h1.includes('fxend'), (h1.match(/class="vbox" type="text"/g) || []).length,
+               h1.includes('fxplot'), h1.includes('fxBake(0,1)')];
   fxParamAdd(0, 1); fxParamAdd(0, 1);
   out.names = k.fx.params.map(q => q.n);
   const srcs = fxSources(SEL.data.tracks[0]);
@@ -272,7 +275,24 @@ script4 = <<~JS
   fxChecked({seq: FX_SEQ, errs:{'0_1':['fx.e_name','Q']}});
   out.err = e1.textContent;
   SEL = Object.assign({}, SEL, {pid: 6});
-  out.otherObj = fxErrText('0_1');
+out.otherObj = fxErrText('0_1');
+SEL = Object.assign({}, SEL, {pid: 5});
+fxChecked({seq: FX_SEQ, errs:{}, plots:{'0_1':[M, 1.5*M, 2*M]}});
+const h3 = trackHTML(SEL.data.tracks[0], 0);
+out.plot = [h3.includes('<path d="M0.0 30.0 L38.0 17.0 L76.0 4.0"/>'), fxEndText(0, 1)];
+SEL = Object.assign({}, SEL, {pid: 6});
+out.plotOther = [fxPlotOf('0_1'), fxEndText(0, 1)];
+SEL = Object.assign({}, SEL, {pid: 5});
+sent.length = 0; changes.length = 0;
+fxBake(0, 1);
+out.bake = [sent[0][0], sent[0][1].pid, sent[0][1].i, sent[0][1].j, sent[0][1].data.tracks[0].keys.length];
+fxBaked({pid:6, i:0, j:1, keys:[{v:1}, {v:2}]});
+out.bakeOther = [SEL.data.tracks[0].keys.length, changes.length];
+fxBaked({pid:5, i:0, j:1, err:['fx.e_bake_many', '32']});
+out.bakeErr = [bakeErr.textContent, SEL.data.tracks[0].keys.length];
+fxBaked({pid:5, i:0, j:1, keys:[{v:1.5*M, dur:0.5, preset:'custom', curve:[[0,0],[0.5,0.7],[1,1]]}, {v:2*M, dur:0.5, preset:'linear', curve:[[0,0],[1,1]]}]});
+const ks = SEL.data.tracks[0].keys;
+out.baked = [ks.length, ks.map(k => !!k.fx), ks[1].v / M, changes[changes.length - 1]];
   process.stdout.write(JSON.stringify(out));
 JS
 File.write(path, script4)
@@ -281,7 +301,7 @@ eq('formula spenta: curva, casella «Formula», valori da scrivere', r4['before'
 eq('colore: niente formula', r4['color'], false)
 eq('spuntata: una formula lineare fino al valore di prima, editor chiuso, anteprima', r4['on'],
    [true, 'v0 + (2.000 - v0) * u', 1, [true, 1]])
-eq('…niente pallini, il campo della formula, «dove la porta la formula» al posto del valore', r4['after'], [false, true, true, 1])
+eq('…niente pallini, il campo della formula, «dove la porta la formula» al posto del valore', r4['after'], [false, true, true, 1, true, true])
 eq('parametri nuovi: K, K2', r4['names'], %w[K K2])
 eq('si leggono: le altre tracce di questo oggetto (numeriche) e gli altri oggetti', r4['sources'],
    [[5, 'tr.fx_self', ['size_y']], [1, 'Cubo', %w[size_z rot_z]]])
@@ -294,6 +314,12 @@ eq('controllo chiesto a Ruby con i dati non ancora salvati', r4['sent'], [1, 5, 
 eq('risposta vecchia: ignorata', r4['stale'], '')
 eq('errore mostrato', r4['err'], 'fx.e_name')
 eq('errori di un altro oggetto: non si mostrano', r4['otherObj'], '')
+eq('il grafico della formula al posto della miniatura, e dove arriva', r4['plot'], [true, "ƒ tr.fx_end  ≈ 2.000 m"])
+eq('…ma non quello di un altro oggetto', r4['plotOther'], [nil, 'ƒ tr.fx_end'])
+eq('«Converti in curva»: chiesto a Ruby con i dati di adesso', r4['bake'], ['bake', 5, 0, 1, 2])
+eq('…risposta per un altro oggetto: ignorata', r4['bakeOther'], [2, 0])
+eq('…troppo mossa: lo dice sotto la formula', r4['bakeErr'], ['fx.e_bake_many', 2])
+eq('…convertita: due stati al posto della formula, salvati', r4['baked'], [3, [false, false, false], 1.5, [true, nil]])
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)

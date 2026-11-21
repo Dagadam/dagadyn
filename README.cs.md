@@ -30,7 +30,7 @@ rozsvěcují, řezy, které procházejí budovou.
 - **Vzorce a vazby**: přechod může místo křivky sledovat vzorec (například
   `v0 + (2 - v0) * u`) a pomocí parametrů číst jiné stopy, i jiných objektů:
   jejich hodnotu nebo průběh některého z jejich přechodů. Deska se rozšiřuje,
-  zatímco krychle roste. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  zatímco krychle roste. Panel vzorec vykreslí a umí ho převést na bodovou křivku; propojené objekty zkopírované spolu zůstanou propojené mezi sebou. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Spuštění**: objekt začne s časovou osou, po skončení jiného (plus
   čekání), nebo **po použití**: kliknutím nástrojem *Použít*. Může pokaždé
   začít od začátku, nebo jít dopředu a příště zpět (dveře, zásuvky).

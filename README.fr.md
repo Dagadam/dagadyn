@@ -33,7 +33,7 @@ un bâtiment.
 - **Formules et liens** : une transition peut suivre une formule au lieu de
   la courbe (par exemple `v0 + (2 - v0) * u`) et, avec des paramètres, lire
   d'autres pistes, d'autres objets aussi : leur valeur ou l'avancement d'une
-  de leurs transitions. La dalle s'élargit pendant que le cube grandit. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  de leurs transitions. La dalle s'élargit pendant que le cube grandit. Le panneau trace la formule et peut la convertir en courbe à points ; des objets liés copiés ensemble restent liés entre eux. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Démarrages** : un objet démarre avec la timeline, après qu'un autre a
   fini (plus une attente), ou **quand on l'actionne** : un clic avec l'outil
   *Actionner*. Il peut recommencer depuis le début à chaque fois, ou avancer

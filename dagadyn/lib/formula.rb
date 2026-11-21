@@ -416,10 +416,176 @@ module DagaDyn
       animated_instances(model).each { |x, xd| graph[x.persistent_id] = xd unless x.persistent_id == pid }
       graph[pid] = data
       out['errs'] = fx_problems(pid, data, graph)
+      # il grafico di ogni formula che si calcola (unità interne)
+      out['plots'] = {}
+      list = fx_list(model, pid, data)
+      data['tracks'].each_with_index do |t, i|
+        t['keys'].each_with_index do |k, j|
+          next unless j > 0 && k['fx'] && k['fx']['on'] && !out['errs']["#{i}_#{j}"]
+          sm = fx_samples(model, pid, data, list, i, j, FX_PLOT_N)
+          out['plots']["#{i}_#{j}"] = sm[1].map { |v| v.round(6) } if sm
+        end
+      end
       out
     rescue => dyn_err
       log_error(__method__, dyn_err)
       { 'seq' => nil, 'errs' => {} }
+    end
+
+    # ── Grafico e conversione in curva ──────────────────────────────
+    FX_PLOT_N = 48          # tratti del grafico nel pannello
+    FX_BAKE_N = 240         # tratti campionati per «Converti in curva»
+    FX_BAKE_TOL = 0.004     # scarto ammesso fra curva e formula (frazione del salto di ogni transizione)
+
+    # Gli oggetti animati del modello, con questo e i suoi dati (anche non salvati)
+    def self.fx_list(model, pid, data)
+      list = animated_instances(model).reject { |x, _| x.persistent_id == pid }
+      e = find_pid(pid)
+      list << [e, data] if e && e.valid?
+      list
+    end
+
+    # Valori (unità interne) della transizione j (1 = la prima) della
+    # traccia i, a n + 1 istanti da u = 0 a u = 1, al primo giro e con gli
+    # altri oggetti dove li porta la timeline (come le traiettorie):
+    # [valore da cui parte, valori], o nil se non si calcola.
+    def self.fx_samples(model, pid, data, list, i, j, n)
+      t = data['tracks'][i] or return nil
+      k = t['keys'][j] or return nil
+      return nil unless j > 0 && k['fx'] && k['fx']['on'] && k['dur'] > 0 && FX_KINDS.include?(PROPS[t['prop']][:kind])
+      tr = prepare_tracks({ 'tracks' => [t.merge('on' => true)] }).first
+      g = tr[:segs][j - 1]
+      return nil unless g[:fx] && g[:fx][:ast]
+      w = fx_world_model(model, list)
+      st0 = w[:starts][pid] || 0.0
+      ctx = { w: w, off: st0, f: w[:f] }
+      v0 = seg_from(tr, j - 1, tr[:delay], ctx)
+      t0 = tr[:delay] + tr[:ends][j - 1] - g[:dur]
+      vals = (0..n).map do |s|
+        u = s.to_f / n
+        fx_eval(tr, g, u, u * g[:dur], v0, st0 + t0 + u * g[:dur], ctx) or return nil
+      end
+      [v0, vals]
+    end
+
+    # «Converti in curva»: la transizione a formula j della traccia i
+    # diventa stati e curve a pallini che fanno lo stesso movimento, con i
+    # valori di adesso (i collegamenti spariscono). Un nuovo stato a ogni
+    # inversione di marcia, così ogni curva va da 0 a 1 senza tornare
+    # indietro; se la formula non parte dal valore di prima, uno stato di
+    # durata 0 fa il salto.
+    #   json: { pid, data, i, j } → { 'pid', 'i', 'j', 'keys' => [...] } o { 'err' => [chiave, arg] }
+    def self.fx_bake(json)
+      d = JSON.parse(json.to_s)
+      pid = d['pid'].to_i
+      i = d['i'].to_i
+      j = d['j'].to_i
+      out = { 'pid' => pid, 'i' => i, 'j' => j }
+      model = Sketchup.active_model or return out.merge('err' => ['fx.e_bake', ''])
+      data = sanitize_data(d['data'])
+      t = data['tracks'][i]
+      sm = fx_samples(model, pid, data, fx_list(model, pid, data), i, j, FX_BAKE_N)
+      return out.merge('err' => ['fx.e_bake', '']) unless t && sm
+      keys = fx_bake_keys(t['prop'], *sm, t['keys'][j]['dur'])
+      room = MAX_KEYS - t['keys'].size + 1
+      return out.merge('err' => ['fx.e_bake_many', MAX_KEYS.to_s]) if keys.size > room
+      out.merge('keys' => keys)
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      { 'err' => ['fx.e_bake', ''] }
+    end
+
+    def self.fx_bake_keys(prop, v0, f, dur)
+      n = f.size - 1
+      lo, hi = f.minmax
+      eps = [(hi - lo) * 1e-3, 1e-9].max
+      keys = []
+      keys << fx_bake_key(prop, f[0], 0.0, CURVE_LINEAR) if (f[0] - v0).abs > eps
+      fx_bake_breaks(f, eps).each_cons(2) do |s0, s1|
+        a = f[s0]
+        b = f[s1]
+        pts = if (b - a).abs <= eps
+                CURVE_LINEAR
+              else
+                fx_bake_curve((s0..s1).map { |s| [(s - s0).to_f / (s1 - s0), (f[s] - a) / (b - a)] })
+              end
+        keys << fx_bake_key(prop, b, dur * (s1 - s0) / n, pts)
+      end
+      keys
+    end
+
+    CURVE_LINEAR = [[0.0, 0.0], [1.0, 1.0]].freeze
+
+    def self.fx_bake_key(prop, v, dur, pts)
+      linear = pts == CURVE_LINEAR
+      { 'v' => sanitize_value(prop, v), 'dur' => dur, 'preset' => linear ? 'linear' : 'custom',
+        'curve' => sanitize_points(pts.map(&:dup)) }
+    end
+
+    # Dove la formula cambia verso (oltre uno scarto eps): inizio, inversioni, fine
+    def self.fx_bake_breaks(f, eps)
+      brk = [0]
+      dir = 0
+      ext = 0
+      (1...f.size).each do |s|
+        case dir
+        when 0
+          if (f[s] - f[0]).abs > eps
+            dir = f[s] > f[0] ? 1 : -1
+            ext = s
+          end
+        when 1
+          if f[s] >= f[ext] then ext = s
+          elsif f[ext] - f[s] > eps then brk << ext; dir = -1; ext = s
+          end
+        else
+          if f[s] <= f[ext] then ext = s
+          elsif f[s] - f[ext] > eps then brk << ext; dir = 1; ext = s
+          end
+        end
+      end
+      brk << f.size - 1 unless brk.last == f.size - 1
+      brk
+    end
+
+    # I punti che bastano, al più quanti ne tiene una curva: prima
+    # Douglas-Peucker (tratti dritti), poi, con la curva vera del motore
+    # (PCHIP), si aggiunge il campione dove sbaglia di più finché serve.
+    def self.fx_bake_curve(pts)
+      tol = FX_BAKE_TOL
+      idx = nil
+      loop do
+        idx = fx_dp(pts, 0, pts.size - 1, tol, [0, pts.size - 1]).sort.uniq
+        break if idx.size <= CURVE_MAX_PTS
+        tol *= 1.5
+      end
+      loop do
+        sel = idx.map { |k| pts[k] }
+        c = curve_prepare(sel)
+        worst, err = pts.each_with_index.map { |(x, y), k| [k, (curve_eval(c, x) - y).abs] }.max_by(&:last)
+        return sel if err <= FX_BAKE_TOL || idx.size >= CURVE_MAX_PTS || idx.include?(worst)
+        idx = (idx + [worst]).sort
+      end
+    end
+
+    def self.fx_dp(pts, a, b, tol, acc)
+      return acc if b - a < 2
+      x0, y0 = pts[a]
+      x1, y1 = pts[b]
+      far = nil
+      dmax = tol
+      (a + 1...b).each do |k|
+        x, y = pts[k]
+        dy = (y - (y0 + (y1 - y0) * (x - x0) / (x1 - x0))).abs
+        if dy > dmax
+          dmax = dy
+          far = k
+        end
+      end
+      return acc unless far
+      acc << far
+      fx_dp(pts, a, far, tol, acc)
+      fx_dp(pts, far, b, tol, acc)
     end
 
     # graph: { pid => dati } di tutti gli oggetti animati (con questo)

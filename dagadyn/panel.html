@@ -480,6 +480,8 @@ body.rtl .ktr{padding:4px 16px 4px 0}
 .fxname{flex:0 0 60px;width:60px;text-align:center}
 .fxexpr:focus,.fxname:focus{border-color:var(--acc);background:var(--s4)}
 .fxpar .sel{flex:0 1 160px;max-width:160px;padding:4px 6px;font-size:.9rem}
+.cthumb.fxplot{cursor:default}
+.cthumb.fxplot:hover{border-color:var(--l2)}
 .fxerr{color:var(--dg-tx);font-size:.85rem}
 .fxerr:empty{display:none}
 .fxvars{font-size:.8rem;color:var(--m2);line-height:1.45}
@@ -2216,7 +2218,8 @@ function trackHTML(tr, i){
         <input class="vbox sm" type="text" inputmode="decimal" value="${fmtSec(k.dur)}" title="${escA(T('tr.dur'))}"
                oninput="keyDur(${i},${j},this,false)" onchange="keyDur(${i},${j},this,true)" onblur="keyDur(${i},${j},this,true)">
         <span class="vu">s</span>
-        ${fx ? '' : `<button class="cthumb" title="${escA(T('tr.curve_h'))}" onclick="openCurve(${i},${j})">${curveThumb(k.curve, 76, 34)}</button>
+        ${fx ? `<span class="cthumb fxplot" data-k="${i}_${j}" title="${escA(T('tr.fx_plot'))}">${fxPlotSvg(i + '_' + j)}</span>`
+             : `<button class="cthumb" title="${escA(T('tr.curve_h'))}" onclick="openCurve(${i},${j})">${curveThumb(k.curve, 76, 34)}</button>
         <span class="cname">${esc(presetName(k.preset))}</span>`}
         ${fxOk ? `<label class="fxon" title="${escA(T('tr.fx_h'))}"><input type="checkbox"${fx ? ' checked' : ''}
           onchange="fxOn(${i},${j},this.checked)">ƒ ${esc(T('tr.fx'))}</label>` : ''}
@@ -2225,7 +2228,7 @@ function trackHTML(tr, i){
       </div>`;
     }
     keys += `<div class="kst"><button class="kdot" title="${escA(T('tr.see_h'))}" onclick="previewKey(${i},${j})"></button><span class="kl">${esc(j === 0 ? T('tr.from') : (j === tr.keys.length - 1 ? T('tr.to') : T('tr.state') + ' ' + (j + 1)))}</span>
-      ${fx ? `<span class="fxend">ƒ ${esc(T('tr.fx_end'))}</span>` : `${valInput(i, j)}
+      ${fx ? `<span class="fxend" data-k="${i}_${j}">${esc(fxEndText(i, j))}</span>` : `${valInput(i, j)}
       <button class="ibtn ghost" title="${escA(T('tr.rest_h'))}" onclick="keyRest(${i},${j})">⌖ ${esc(T('tr.rest'))}</button>`}
     </div>`;
   });
@@ -2458,7 +2461,8 @@ function fxHTML(tr, i, j){
         oninput="fxExpr(${i},${j},this)"><span class="vu">${esc(unitOf(tr.prop))}</span></div>
     <div class="fxerr" data-k="${i}_${j}" role="status">${esc(fxErrText(i + '_' + j))}</div>
     ${f.params.map((q, n) => fxParamHTML(i, j, q, n, srcs)).join('')}
-    <div class="fxrow"><button class="ibtn" onclick="fxParamAdd(${i},${j})">+ ${esc(T('tr.fx_add'))}</button></div>
+    <div class="fxrow"><button class="ibtn" onclick="fxParamAdd(${i},${j})">+ ${esc(T('tr.fx_add'))}</button>
+      <button class="ibtn" title="${escA(T('tr.fx_bake_h'))}" onclick="fxBake(${i},${j})">⤳ ${esc(T('tr.fx_bake'))}</button></div>
     <div class="fxvars">${esc(T('tr.fx_vars'))}</div>
   </div>`;
 }
@@ -2537,7 +2541,7 @@ function fxCheckSoon(){
   fxTimer = setTimeout(fxCheck, 200);
 }
 function fxCheck(){
-  if(SEL.kind !== 'obj' || !SEL.data.tracks.some(t => t.keys.some(k => k.fx && k.fx.on))){ FX_ERR = {}; return; }
+  if(SEL.kind !== 'obj' || !SEL.data.tracks.some(t => t.keys.some(k => k.fx && k.fx.on))){ FX_ERR = {}; FX_PLOT = {}; return; }
   FX_SEQ++;
   FX_PID = SEL.pid;
   sketchup.fx_check(JSON.stringify({pid: SEL.pid, data: SEL.data, seq: FX_SEQ}));
@@ -2545,7 +2549,52 @@ function fxCheck(){
 function fxChecked(r){
   if(!r || r.seq !== FX_SEQ) return;          // risposta a una richiesta superata
   FX_ERR = r.errs || {};
+  FX_PLOT = r.plots || {};
   document.querySelectorAll('.fxerr').forEach(el => { el.textContent = fxErrText(el.dataset.k); });
+  document.querySelectorAll('.fxplot').forEach(el => { el.innerHTML = fxPlotSvg(el.dataset.k); });
+  document.querySelectorAll('.fxend').forEach(el => {
+    const [i, j] = el.dataset.k.split('_').map(Number);
+    el.textContent = fxEndText(i, j);
+  });
+}
+
+/* Il grafico della formula al posto della miniatura della curva: i valori
+   che Ruby calcola con il motore (fx_check → plots, unità interne), dal
+   valore di partenza (la riga sottile) a quello di arrivo */
+let FX_PLOT = {};
+function fxPlotOf(k){ return FX_PID === SEL.pid && FX_PLOT[k] && FX_PLOT[k].length > 1 ? FX_PLOT[k] : null; }
+function fxPlotSvg(k){
+  const v = fxPlotOf(k), w = 76, h = 34, P = 4;
+  if(!v) return `<svg viewBox="0 0 ${w} ${h}"></svg>`;
+  let lo = Math.min(...v), hi = Math.max(...v);
+  if(hi - lo < 1e-9){ lo -= 1; hi += 1; }
+  const x = s => (s / (v.length - 1) * w).toFixed(1), y = a => (P + (hi - a) / (hi - lo) * (h - 2 * P)).toFixed(1);
+  return `<svg viewBox="0 0 ${w} ${h}"><line x1="0" x2="${w}" y1="${y(v[0])}" y2="${y(v[0])}"/>`
+       + `<path d="M${v.map((a, s) => x(s) + ' ' + y(a)).join(' L')}"/></svg>`;
+}
+/* Al posto del valore di arrivo: dove porta la formula, con i valori di adesso */
+function fxEndText(i, j){
+  const p = SEL.data.tracks[i].prop, v = fxPlotOf(i + '_' + j);
+  return `ƒ ${T('tr.fx_end')}` + (v ? `  ≈ ${fmtVal(p, v[v.length - 1])} ${unitOf(p)}` : '');
+}
+
+/* «Converti in curva»: Ruby (fx_bake) rifà la formula con stati e curve a
+   pallini; qui prendono il posto della transizione */
+function fxBake(i, j){
+  if(SEL.kind !== 'obj') return;
+  sketchup.fx_bake(JSON.stringify({pid: SEL.pid, data: SEL.data, i, j}));
+}
+function fxBaked(r){
+  if(!r || SEL.kind !== 'obj' || r.pid !== SEL.pid) return;
+  const tr = SEL.data.tracks[r.i];
+  if(!tr || !tr.keys[r.j]) return;
+  if(r.err){
+    const el = document.querySelector(`.fxerr[data-k="${r.i}_${r.j}"]`);
+    if(el) el.textContent = T(r.err[0]).replace('{x}', r.err[1]);
+    return;
+  }
+  tr.keys.splice(r.j, 1, ...r.keys);
+  tracksChanged(true);
 }
 
 /* ═══════════════════════════════════════════════════════════════

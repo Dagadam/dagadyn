@@ -101,6 +101,16 @@ li segue entro un secondo. Menu e barra nascono prima che DagaWASD sia caricata:
   il valore da cui parte una transizione dopo una formula è quello della formula alla sua fine, con i
   parametri di quel momento (`seg_from`). Ogni fotogramma ricorda i valori già letti (`memo`) e un giro
   chiuso (A legge B che legge A nello stesso istante) dà nil invece di un ciclo infinito: l'oggetto resta al
-  valore di partenza, e `fx_check` lo segnala nel pannello prima ancora di salvare.
+  valore di partenza, e `fx_check` lo segnala nel pannello prima ancora di salvare. `fx_check` restituisce
+  anche il grafico di ogni formula (`fx_samples`, al primo giro, con `fx_world_model`); `fx_bake` («Converti in
+  curva») taglia la formula a ogni inversione di marcia e per ogni tratto sceglie i punti della curva con
+  Douglas-Peucker, poi aggiunge quelli dove la curva PCHIP del motore sbaglia di più.
+- Copie: ogni oggetto porta il proprio persistent_id (`SELF_KEY` nel dizionario, scritto da `write_data`). Dopo ogni
+  operazione `copies_adopt` (lib/tracks.rb) guarda gli oggetti animati nuovi rispetto a `copies_known`: in una copia
+  il segno non è il suo, e i collegamenti (`start.after`, parametri delle formule) verso oggetti copiati nella stessa
+  operazione passano alle copie. Più copie dello stesso oggetto: quella spostata come la copia che legge. Dati senza
+  segno: l'originale è l'oggetto di prima con gli stessi dati. Le modifiche vanno in un'operazione trasparente.
+- Una sessione non prende oggetti non validi o fuori dal modello (`session_start`): un'operazione nostra chiude
+  quella ancora aperta di uno script, e ciò che lo script aveva cancellato sparisce a metà elenco.
 - Colore, opacità, visibilità, tag e piani di sezione cambiano il modello: vanno in operazioni trasparenti
   accodate alla prima voce della sessione. Dopo un Ctrl+Z la sessione apre una voce nuova.

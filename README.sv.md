@@ -32,7 +32,7 @@ snitt som vandrar genom en byggnad.
 - **Formler och kopplingar**: en övergång kan följa en formel i stället för
   kurvan (till exempel `v0 + (2 - v0) * u`) och via parametrar läsa andra spår,
   även från andra objekt: deras värde eller förloppet i en av deras
-  övergångar. Plattan blir bredare medan kuben växer. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  övergångar. Plattan blir bredare medan kuben växer. Panelen ritar formeln och kan göra om den till en punktkurva; kopplade objekt som kopieras tillsammans förblir kopplade till varandra. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Start**: ett objekt startar med tidslinjen, efter att ett annat är klart
   (plus en väntan), eller **när det används**: ett klick med verktyget
   *Använd*. Det kan börja om från början varje gång, eller gå framåt och

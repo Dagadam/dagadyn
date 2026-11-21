@@ -69,6 +69,7 @@ module DagaDyn
         e.attribute_dictionaries.delete(DICT) if e.attribute_dictionaries && e.attribute_dictionary(DICT)
       else
         e.set_attribute(DICT, DATA_KEY, JSON.generate(data))
+        e.set_attribute(DICT, SELF_KEY, e.persistent_id.to_s)   # per riconoscerne le copie (copies_adopt)
       end
       section_register(e, !data['tracks'].empty?) if section?(e)
       data
@@ -100,12 +101,14 @@ module DagaDyn
     # i dati, ma non è nell'elenco del modello: non si animerebbe. Dopo ogni
     # operazione si guardano i piani selezionati (la copia lo è) e quelli
     # nuovi entrano nell'elenco, in un'operazione trasparente che si accoda
-    # alla copia: annullando la copia sparisce anche questo.
+    # alla copia: annullando la copia sparisce anche questo. Nello stesso
+    # giro le copie degli oggetti collegati (copies_adopt).
     def self.section_adopt_soon
       return if @adopt_timer
       @adopt_timer = UI.start_timer(0, false) do
         @adopt_timer = nil
         section_adopt(Sketchup.active_model)
+        copies_adopt(Sketchup.active_model)
       end
     end
 
@@ -127,6 +130,133 @@ module DagaDyn
       panel_selection_soon
     rescue => dyn_err
       log_error(__method__, dyn_err)
+    end
+
+    # ══════════════════════════════════════════════════════════════
+    # Copie di oggetti collegati. La partenza «dopo un altro oggetto» e i
+    # parametri delle formule ricordano l'altro oggetto per persistent_id,
+    # e una copia si porta dietro i dati com'erano. Copiati insieme
+    # (Copia/Incolla, Sposta con Ctrl, una serie, un gruppo che li
+    # contiene), i collegamenti fra loro passano alle copie: la lastra
+    # copiata legge il cubo copiato, e un parametro «questo oggetto» legge
+    # la copia stessa. Verso un oggetto non copiato restano com'erano.
+    #
+    # Di chi è copia: ogni oggetto porta il proprio persistent_id
+    # (SELF_KEY, scritto da write_data); in una copia non è più il suo.
+    # Dati scritti prima, senza: un oggetto nuovo con gli stessi identici
+    # dati di uno solo di quelli che c'erano. Più copie dello stesso
+    # oggetto nella stessa operazione (una serie): un collegamento va alla
+    # copia spostata allo stesso modo (stessa trasformazione dall'originale
+    # alla copia, nel mondo).
+    #
+    # Si confronta con gli oggetti animati che c'erano dopo l'operazione di
+    # prima (copies_known: all'apertura, dopo ogni operazione e annulla);
+    # le modifiche vanno in un'operazione trasparente accodata alla copia.
+    # ══════════════════════════════════════════════════════════════
+    SELF_KEY = 'pid'
+
+    def self.copies_known(model)
+      @copies_seen = model && model.valid? ? [model, anim_candidates(model).to_h { |e| [e.persistent_id, e] }] : nil
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+      @copies_seen = nil
+    end
+
+    def self.copies_adopt(model)
+      return unless model && model.valid?
+      seen = @copies_seen
+      copies_known(model)
+      return unless seen && seen[0].equal?(model)
+      known = seen[1]
+      fresh = anim_candidates(model).reject { |e| known.key?(e.persistent_id) }
+      return if fresh.empty?
+      origin = {}
+      twins = {}
+      fresh.each do |e|
+        st = e.get_attribute(DICT, SELF_KEY).to_s
+        if st.empty?
+          tw = copy_twins(e, known)
+          next twins[e] = tw if tw.size > 1
+          o = tw[0]
+        else
+          o = st.to_i
+        end
+        origin[e] = o if o && o != e.persistent_id
+      end
+      # più oggetti di prima con gli stessi dati: quello da cui la copia è
+      # spostata come le altre copie di questa operazione
+      unless twins.empty?
+        moves = origin.filter_map { |e, o| copy_delta(model, e, o) }
+        twins.each do |e, tw|
+          hit = tw.select { |x| (dd = copy_delta(model, e, x)) && moves.any? { |mv| same_tr?(dd, mv) } }
+          origin[e] = hit[0] if hit.size == 1
+        end
+      end
+      by_orig = {}
+      origin.each { |e, o| (by_orig[o] ||= []) << e }
+      jobs = fresh.filter_map do |e|
+        data = read_data(e) or next
+        o = origin[e]
+        relinked = o ? copy_relink(model, e, o, data, by_orig) : data
+        changed = relinked != data
+        next unless changed || e.get_attribute(DICT, SELF_KEY).to_s != e.persistent_id.to_s
+        [e, relinked, changed]
+      end
+      return if jobs.empty?
+      own_op(model, true) do
+        jobs.each { |e, d, changed| changed ? write_data(e, d) : e.set_attribute(DICT, SELF_KEY, e.persistent_id.to_s) }
+      end
+      copies_known(model)
+      moved = jobs.select { |_e, _d, changed| changed }
+      return if moved.empty?
+      if @session && @session[:model] == model
+        moved.each { |e, d, _| session_update(e, d, true) }
+        session_updated
+      end
+      paths_dirty
+      panel_selection_soon
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+    end
+
+    # Dati senza SELF_KEY: gli oggetti di prima con gli stessi dati
+    def self.copy_twins(e, known)
+      raw = e.get_attribute(DICT, DATA_KEY)
+      known.values.select { |x| x.valid? && x.get_attribute(DICT, DATA_KEY) == raw }.map(&:persistent_id)
+    end
+
+    # I dati della copia e con i collegamenti verso gli oggetti copiati
+    # insieme a lei (o è l'originale di e)
+    def self.copy_relink(model, e, o, data, by_orig)
+      mine = nil
+      pick = lambda do |p|
+        list = by_orig[p] or return p
+        return list[0].persistent_id if list.size == 1
+        mine ||= copy_delta(model, e, o) or return p
+        hit = list.find { |c| (dd = copy_delta(model, c, p)) && same_tr?(dd, mine) }
+        hit ? hit.persistent_id : p
+      end
+      d = JSON.parse(JSON.generate(data))
+      st = d['start']
+      st['after'] = pick.call(st['after']) if st['after'] != 0
+      d['tracks'].each do |t|
+        t['keys'].each do |k|
+          f = k['fx'] or next
+          f['params'].each { |q| q['pid'] = pick.call(q['pid']) if q['pid'] != 0 }
+        end
+      end
+      d
+    end
+
+    # Da dove sta l'originale (persistent_id o) a dove sta la copia c, nel mondo
+    def self.copy_delta(model, c, o)
+      x = model.find_entity_by_persistent_id(o) rescue nil
+      return nil unless x && x.valid? && animatable?(x) && !section?(x) && !section?(c)
+      (world_of(c) * c.transformation) * (world_of(x) * x.transformation).inverse
+    end
+
+    def self.same_tr?(a, b)
+      a.to_a.zip(b.to_a).all? { |p, q| (p - q).abs < 1e-3 }
     end
 
     # ══════════════════════════════════════════════════════════════

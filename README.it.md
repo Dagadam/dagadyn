@@ -31,7 +31,7 @@ che si accendono, sezioni che attraversano un edificio.
 - **Formule e collegamenti**: una transizione può seguire una formula invece
   della curva (per esempio `v0 + (2 - v0) * u`) e, con i parametri, leggere
   altre tracce, anche di altri oggetti: il loro valore o l'avanzamento di una
-  loro transizione. La lastra si allarga mentre il cubo cresce. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  loro transizione. La lastra si allarga mentre il cubo cresce. Il pannello disegna la formula e la può trasformare in curva a pallini; oggetti collegati copiati insieme restano collegati fra loro. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Partenze**: un oggetto parte con la timeline, dopo che un altro ha finito
   (più un'attesa), oppure **quando lo si aziona**: un clic con lo strumento
   *Aziona*. Può ripartire ogni volta da capo, o andare avanti e la volta dopo

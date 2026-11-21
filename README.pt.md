@@ -31,7 +31,7 @@ se acendem, cortes que atravessam um edifício.
 - **Fórmulas e ligações**: uma transição pode seguir uma fórmula em vez da
   curva (por exemplo `v0 + (2 - v0) * u`) e, com parâmetros, ler outras
   faixas, também de outros objetos: o seu valor ou o progresso de uma das suas
-  transições. A laje alarga enquanto o cubo cresce. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  transições. A laje alarga enquanto o cubo cresce. O painel desenha a fórmula e pode convertê-la numa curva de pontos; objetos vinculados copiados juntos continuam vinculados entre si. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Inícios**: um objeto começa com a linha do tempo, depois de outro
   terminar (mais uma espera), ou **ao ser acionado**: um clique com a
   ferramenta *Acionar*. Pode recomeçar do início de cada vez, ou avançar e

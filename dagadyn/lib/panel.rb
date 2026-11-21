@@ -416,6 +416,7 @@ module DagaDyn
       cb.call('preview')     { |json| preview_obj(json) }
       cb.call('use_tool')    { |_| start_use_tool }
       cb.call('fx_check')    { |json| js("fxChecked(#{js_json(fx_check(json))})") }
+      cb.call('fx_bake')     { |json| js("fxBaked(#{js_json(fx_bake(json))})") }
 
       @dialog.set_on_closed { @dialog = nil; ui_watch_stop } if @dialog.respond_to?(:set_on_closed)
       @dialog.show

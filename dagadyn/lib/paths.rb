@@ -22,6 +22,7 @@ module DagaDyn
     # Cache: entità → [firma, punti, punti degli stati]
     def self.paths_dirty
       @path_cache = {}
+      @link_cache = {}
       @path_list = nil
       view = Sketchup.active_model && Sketchup.active_model.active_view
       view.invalidate if view && cf('show_paths') && !playing?
@@ -122,6 +123,72 @@ module DagaDyn
         view.draw_points(kpts, 8, 2, Sketchup::Color.new(*PATH_KEY)) unless kpts.empty?
         view.draw_points([pts[0]], 9, 1, Sketchup::Color.new(*PATH_RGB))
       end
+      links_draw(view, model)
+    rescue => dyn_err
+      log_error(__method__, dyn_err)
+    end
+
+    # ── Collegamenti delle formule ──────────────────────────────────
+    # Con le traiettorie, una linea tratteggiata da ogni oggetto letto da
+    # una formula a chi lo legge, con il nome del parametro a metà: dei
+    # selezionati (quelli che leggono e quelli da cui sono letti) o di tutti.
+    # Segue gli oggetti mentre si muovono.
+    LINK_RGB = [255, 140, 90].freeze
+
+    # [[persistent_id letto, nomi dei parametri]] delle formule accese di e
+    def self.links_of(e)
+      raw = e.get_attribute(DICT, DATA_KEY).to_s
+      @link_cache ||= {}
+      c = @link_cache[e]
+      return c[1] if c && c[0] == raw
+      by = {}
+      data = read_data(e)
+      (data ? data['tracks'] : []).each do |t|
+        next unless t['on']
+        t['keys'].each do |k|
+          f = k['fx']
+          next unless f && f['on']
+          f['params'].each { |q| (by[q['pid']] ||= []) << q['n'] if q['pid'] != 0 && q['pid'] != e.persistent_id }
+        end
+      end
+      @link_cache[e] = [raw, by.map { |pid, ns| [pid, ns.uniq] }]
+      @link_cache[e][1]
+    end
+
+    # Coppie [letto, chi legge, nomi] da disegnare
+    def self.links_pairs(model)
+      all = anim_candidates(model)
+      readers = cf('paths_all') ? all : all.select { |e| !links_of(e).empty? }
+      sel = cf('paths_all') ? nil : model.selection.to_a
+      out = []
+      readers.each do |e|
+        next unless e.valid?
+        links_of(e).each do |pid, ns|
+          src = find_pid(pid) or next
+          next unless src.valid? && animatable?(src) && !section?(src)
+          out << [src, e, ns] if sel.nil? || sel.include?(e) || sel.include?(src)
+        end
+      end
+      out
+    end
+
+    def self.links_draw(view, model)
+      pairs = links_pairs(model)
+      return if pairs.empty?
+      col = Sketchup::Color.new(*LINK_RGB)
+      pairs.each do |src, e, ns|
+        a = src.bounds.center.transform(world_of(src))
+        b = e.bounds.center.transform(world_of(e))
+        next if a.distance(b) < 1e-3
+        view.line_width = 2
+        view.line_stipple = '-'
+        view.drawing_color = col
+        view.draw(GL_LINES, [a, b])
+        view.draw_points([b], 7, 1, col)
+        mid = Geom::Point3d.new((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2)
+        view.draw_text(view.screen_coords(mid), ns.join(', '), color: col, size: 11, bold: true)
+      end
+      view.line_stipple = ''
     rescue => dyn_err
       log_error(__method__, dyn_err)
     end

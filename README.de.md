@@ -34,7 +34,7 @@ Gebäude wandern.
 - **Formeln und Verknüpfungen**: Ein Übergang kann statt der Kurve einer
   Formel folgen (zum Beispiel `v0 + (2 - v0) * u`) und über Parameter andere
   Spuren lesen, auch anderer Objekte: ihren Wert oder den Fortschritt eines
-  ihrer Übergänge. Die Platte wird breiter, während der Würfel wächst. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
+  ihrer Übergänge. Die Platte wird breiter, während der Würfel wächst. Das Panel zeichnet die Formel und kann sie in eine Punktkurve umwandeln; verknüpfte Objekte, die zusammen kopiert werden, bleiben untereinander verknüpft. → [`formulas.skp`](examples/README.md#formulas-objects-that-read-each-other)
 - **Starts**: Ein Objekt startet mit der Zeitleiste, nachdem ein anderes
   fertig ist (plus Wartezeit), oder **beim Benutzen**: ein Klick mit dem
   Werkzeug *Benutzen*. Es kann jedes Mal von vorn beginnen oder vorwärts

@@ -662,7 +662,7 @@ info = D.obj_info(lastra)
 eq('pannello: gli altri oggetti con le tracce che una formula può leggere', info['others'].find { |o| o['pid'] == cubo.persistent_id }['tracks'],
    [{ 'prop' => 'size_z', 'n' => 1 }])
 chk = ->(e, data) { D.fx_check(JSON.generate('pid' => e.persistent_id, 'data' => data, 'seq' => 7)) }
-eq('controllo: tutto a posto', chk.call(lastra, D.read_data(lastra)), { 'seq' => 7, 'errs' => {} })
+eq('controllo: tutto a posto', chk.call(lastra, D.read_data(lastra)).values_at('seq', 'errs'), [7, {}])
 giro = D.read_data(cubo)
 giro['tracks'][0]['keys'][1]['fx'] = { 'on' => true, 'expr' => 'K', 'params' => [{ 'n' => 'K', 'pid' => lastra.persistent_id, 'prop' => 'size_x', 'at' => 0 }] }
 eq('controllo: il cubo che legge la lastra che legge il cubo', chk.call(cubo, giro)['errs'], { '0_1' => ['fx.e_cycle', ''] })
@@ -704,6 +704,106 @@ ensure
   D.singleton_class.alias_method(:log_error, :log_error_prove)
 end
 eq('…e l\'errore va nel registro', logged, ['session_start: TypeError'])
+
+# ── Copie di oggetti collegati ──
+# Il cubo cresce; la lastra legge il cubo e la propria posizione; la sfera
+# parte dopo il cubo. Copiati insieme, i collegamenti passano alle copie.
+cm = Sketchup::Model.new
+$model = cm
+D.model_changed(cm, true)
+at = ->(x) { Geom::Transformation.translation(Geom::Vector3d.new(x, 0, 0)) }
+copia = lambda do |e, dx, stamp: true|
+  c = cm.add_group([0, 0, 0], [1.m, 1.m, 1.m], at.(e.transformation.to_a[12] + dx))
+  c.set_attribute(D::DICT, D::DATA_KEY, e.get_attribute(D::DICT, D::DATA_KEY))
+  c.set_attribute(D::DICT, D::SELF_KEY, e.get_attribute(D::DICT, D::SELF_KEY)) if stamp
+  c
+end
+par = ->(e, prop) { { 'n' => 'K', 'pid' => e.persistent_id, 'prop' => prop, 'at' => 0 } }
+cub = cm.add_group([0, 0, 0], [1.m, 1.m, 1.m], at.(0))
+las = cm.add_group([0, 0, 0], [1.m, 1.m, 1.m], at.(2.m))
+sfe = cm.add_group([0, 0, 0], [1.m, 1.m, 1.m], at.(4.m))
+anim(cub, [tr('size_z', 1.m, 2.m, 2.0)])
+anim(las, [tr('move_y', 0, 1.m, 2.0), fxtr('size_x', 1.m, 2.0, 'K + J', [par.(cub, 'size_z'), par.(las, 'move_y').merge('n' => 'J')])])
+anim(sfe, [tr('move_z', 0, 1.m, 1.0)], start: { 'mode' => 'after', 'after' => cub.persistent_id, 'wait' => 0.0, 'act' => 'play' })
+D::ModelObs.new.onTransactionCommit(cm)
+D.copies_known(cm)
+legge = ->(e) { D.read_data(e)['tracks'][1]['keys'][1]['fx']['params'].map { |q| q['pid'] } }
+dopo = ->(e) { D.read_data(e)['start']['after'] }
+adotta = -> { D::ModelObs.new.onTransactionCommit(cm); D.copies_adopt(cm) }
+
+cub2 = copia.(cub, 10.m); las2 = copia.(las, 10.m)
+adotta.()
+eq('copiati insieme: la lastra copiata legge il cubo copiato e sé stessa', legge.(las2), [cub2.persistent_id, las2.persistent_id])
+eq('…l\'originale non cambia', legge.(las), [cub.persistent_id, las.persistent_id])
+eq('…e la copia ha il suo segno', las2.get_attribute(D::DICT, D::SELF_KEY), las2.persistent_id.to_s)
+eq('…in un\'operazione accodata alla copia', cm.ops.last, [D.t('op.anim'), true])
+
+las3 = copia.(las, 20.m)
+adotta.()
+eq('copiata da sola: legge ancora il cubo di prima, e sé stessa', legge.(las3), [cub.persistent_id, las3.persistent_id])
+
+# una serie in una sola operazione: ogni lastra con il cubo spostato come lei
+cub4 = copia.(cub, 30.m); las5 = copia.(las, 40.m); las4 = copia.(las, 30.m); cub5 = copia.(cub, 40.m)
+adotta.()
+eq('serie: ognuna con il cubo della sua copia', [legge.(las4)[0], legge.(las5)[0]], [cub4.persistent_id, cub5.persistent_id])
+
+cub6 = copia.(cub, 50.m); sfe6 = copia.(sfe, 50.m)
+adotta.()
+eq('catena copiata insieme: la sfera copiata parte dopo il cubo copiato', dopo.(sfe6), cub6.persistent_id)
+eq('…e la sfera di prima dopo il cubo di prima', dopo.(sfe), cub.persistent_id)
+
+# dati scritti prima del segno: si riconosce l'originale dai dati identici
+[cub, las].each { |e| e.attribute_dictionary(D::DICT).delete(D::SELF_KEY) }
+D.copies_known(cm)
+cub7 = copia.(cub, 60.m, stamp: false); las7 = copia.(las, 60.m, stamp: false)
+adotta.()
+eq('dati senza segno: la copia legge comunque la copia', legge.(las7), [cub7.persistent_id, las7.persistent_id])
+
+# ── Grafico della formula e «Converti in curva» ──
+bm = Sketchup::Model.new
+$model = bm
+D.model_changed(bm, true)
+pen = bm.add_group([0, 0, 0], [1.m, 1.m, 1.m])
+anim(pen, [fxtr('rot_y', 0, 2.0, '30 * sin(180 * t)', [])])
+D::ModelObs.new.onTransactionCommit(bm)
+pdata = D.read_data(pen)
+cuoci = ->(data, i = 0, j = 1) { D.fx_bake(JSON.generate('pid' => pen.persistent_id, 'data' => data, 'i' => i, 'j' => j)) }
+r = cuoci.(pdata)
+eq('pendolo: tre stati, uno a ogni inversione', r['keys'].map { |k| [k['v'].round(3), k['dur'].round(3)] }, [[30.0, 0.5], [-30.0, 1.0], [0.0, 0.5]])
+baked = JSON.parse(JSON.generate(pdata))
+baked['tracks'][0]['keys'][1, 1] = r['keys']
+ft = D.prepare_tracks(pdata).first
+bt = D.prepare_tracks(D.sanitize_data(baked)).first
+err = (0..200).map { |s| (D.track_value(ft, s * 0.01) - D.track_value(bt, s * 0.01)).abs }.max
+eq('…e le curve rifanno la formula (scarto massimo sotto 0.2°)', err < 0.2, true)
+puts "    scarto massimo: #{err.round(4)}°"
+chk = D.fx_check(JSON.generate('pid' => pen.persistent_id, 'data' => pdata, 'seq' => 3))
+eq('grafico per il pannello: 49 valori, da 0 a 0 passando per 30', [chk['plots']['0_1'].size, chk['plots']['0_1'][0], chk['plots']['0_1'][12].round(3)], [49, 0.0, 30.0])
+salto = JSON.parse(JSON.generate(pdata))
+salto['tracks'][0]['keys'][1]['fx']['expr'] = '10 + 5 * u'
+r = cuoci.(salto)
+eq('formula che non parte dal valore di prima: un salto di durata 0, poi la rampa', r['keys'].map { |k| [k['v'].round(3), k['dur'].round(3), k['preset']] },
+   [[10.0, 0.0, 'linear'], [15.0, 2.0, 'linear']])
+mossa = JSON.parse(JSON.generate(pdata))
+mossa['tracks'][0]['keys'][1]['fx']['expr'] = '10 * sin(3600 * t)'
+eq('troppo mossa per gli stati che ci stanno', cuoci.(mossa)['err'], ['fx.e_bake_many', D::MAX_KEYS.to_s])
+rotta = JSON.parse(JSON.generate(pdata))
+rotta['tracks'][0]['keys'][1]['fx']['expr'] = '30 * '
+eq('formula sbagliata: niente conversione', cuoci.(rotta)['err'], ['fx.e_bake', ''])
+
+$model = cm
+D.model_changed(cm)
+cm.selection.replace([las2])
+eq('linee: la lastra copiata selezionata, dal cubo copiato (il parametro su sé stessa non conta)',
+   D.links_pairs(cm).map { |a, b, ns| [a, b, ns] }, [[cub2, las2, ['K']]])
+cm.selection.replace([cub])
+eq('…selezionato il cubo: tutte le lastre che lo leggono', D.links_pairs(cm).map { |a, b, _| [a, b] }.sort_by { |_, b| b.persistent_id },
+   [[cub, las], [cub, las3]])
+cm.selection.clear
+n_ops = cm.ops.size
+D.copies_known(cm)
+adotta.()
+eq('niente di nuovo: nessuna operazione', cm.ops.size, n_ops)
 
 puts $bad.zero? ? 'TUTTO OK' : "#{$bad} errori"
 exit($bad.zero? ? 0 : 1)
